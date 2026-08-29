@@ -35,7 +35,8 @@ npm run dev
 1. [`docs/プロジェクトコンテキスト.md`](./docs/プロジェクトコンテキスト.md) — プロジェクトの背景・現状・チーム体制のまとめ
 2. [`docs/仕様書.md`](./docs/仕様書.md) — 何を作るか(機能・画面・データモデル方針)
 3. [`DESIGN.md`](./DESIGN.md) — 配色・タイポグラフィなどUIのルール
-4. [`CONTRIBUTING.md`](./CONTRIBUTING.md) — ブランチ運用・コミット・コンフリクト対応のルール(Git初心者向け)
+4. [`STRUCTURE.md`](./STRUCTURE.md) — どの機能をどのフォルダ/URLに実装するかの置き場所ルール
+5. [`CONTRIBUTING.md`](./CONTRIBUTING.md) — ブランチ運用・コミット・コンフリクト対応のルール(Git初心者向け)
 
 ## 開発の進め方
 
