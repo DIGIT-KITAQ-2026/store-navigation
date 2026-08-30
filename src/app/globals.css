@@ -3,6 +3,19 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* DESIGN.md tokens (管理者画面向けに一部先行導入) */
+  --primary: #0b6e6e;
+  --primary-hover: #095858;
+  --surface: #ffffff;
+  --surface-alt: #f1f3f4;
+  --surface-pill: #dff3f1;
+  --text-primary: #1f2124;
+  --text-secondary: #5f6368;
+  --text-on-primary: #ffffff;
+  --border-color: #e0e2e5;
+  --danger: #d93025;
+  --font-admin: "Noto Sans JP", system-ui, sans-serif;
 }
 
 @theme inline {
@@ -10,6 +23,21 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-pill: var(--surface-pill);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-on-primary: var(--text-on-primary);
+  --color-border: var(--border-color);
+  --color-danger: var(--danger);
+  --radius-pill: 999px;
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --font-admin: var(--font-admin);
 }
 
 @media (prefers-color-scheme: dark) {
