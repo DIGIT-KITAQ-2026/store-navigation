@@ -1,69 +1,151 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import UnityViewer, { type UnityViewerHandle } from "@/components/UnityViewer";
+import SearchBar from "@/components/SearchBar";
+import SearchSuggestions from "@/components/SearchSuggestions";
+import SearchResults from "@/components/SearchResults";
+import EmptyState from "@/components/EmptyState";
+import GuideModal from "@/components/GuideModal";
+import { searchProducts } from "@/lib/searchProducts";
+import { guideToShelf } from "@/lib/unityBridge";
+import type { SearchResultItem } from "@/types/product";
+
+type SearchStatus = "idle" | "loading" | "empty-query" | "has-results" | "no-results";
+
+const SEARCH_SUGGESTIONS = ["牛乳", "朝食に必要なもの", "カレーの材料", "飲み物が欲しい"];
+
+const SEARCH_DELAY_MS = 350;
 
 export default function Home() {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<SearchStatus>("idle");
+  const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<SearchResultItem | null>(null);
+  const [guideMessage, setGuideMessage] = useState<string | null>(null);
+
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unityViewerRef = useRef<UnityViewerHandle>(null);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current !== null) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const runSearch = (rawQuery: string) => {
+    if (searchTimeoutRef.current !== null) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (rawQuery.trim().length === 0) {
+      setStatus("empty-query");
+      setResults([]);
+      return;
+    }
+
+    setStatus("loading");
+
+    searchTimeoutRef.current = setTimeout(() => {
+      const found = searchProducts(rawQuery);
+      setResults(found);
+      setStatus(found.length > 0 ? "has-results" : "no-results");
+    }, SEARCH_DELAY_MS);
+  };
+
+  const handleSuggestionSelect = (value: string) => {
+    setQuery(value);
+    runSearch(value);
+  };
+
+  const handleViewLocation = (item: SearchResultItem) => {
+    setSelectedItem(item);
+    setGuideMessage(null);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedItem(null);
+    setGuideMessage(null);
+  };
+
+  const handleStartGuide = () => {
+    if (selectedItem === null) return;
+    const result = guideToShelf(selectedItem.product);
+    setGuideMessage(result.message);
+    unityViewerRef.current?.startGuideByShelfId(selectedItem.product.shelfId);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-full bg-slate-50">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
+        <header className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">商品を探す</h1>
+          <p className="text-sm text-slate-600 sm:text-base">
+            商品名や、作りたいもの・目的から売り場を検索できます
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        </header>
+
+        <UnityViewer ref={unityViewerRef} />
+
+        <section
+          aria-labelledby="search-results-heading"
+          className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5"
+        >
+          <h2 id="search-results-heading" className="text-lg font-bold text-slate-900">
+            商品検索結果
+          </h2>
+
+          {status === "idle" && (
+            <p className="text-center text-sm text-slate-500">
+              商品を検索すると、こちらに候補が表示されます
+            </p>
+          )}
+
+          {status === "loading" && (
+            <p role="status" className="text-center text-sm font-medium text-slate-500">
+              検索中です…
+            </p>
+          )}
+
+          {status === "empty-query" && <EmptyState message="商品名や目的を入力してください" />}
+
+          {status === "no-results" && (
+            <EmptyState message="該当する商品が見つかりませんでした。別の言葉で検索してください。" />
+          )}
+
+          {status === "has-results" && (
+            <SearchResults results={results} onViewLocation={handleViewLocation} />
+          )}
+        </section>
+
+        <section
+          aria-labelledby="search-form-heading"
+          className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5"
+        >
+          <h2 id="search-form-heading" className="text-lg font-bold text-slate-900">
+            商品検索
+          </h2>
+          <SearchBar value={query} onChange={setQuery} onSubmit={() => runSearch(query)} />
+        </section>
+
+        <section
+          aria-label="検索候補"
+          className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5"
+        >
+          <SearchSuggestions suggestions={SEARCH_SUGGESTIONS} onSelect={handleSuggestionSelect} />
+        </section>
+      </div>
+
+      {selectedItem !== null && (
+        <GuideModal
+          item={selectedItem}
+          guideMessage={guideMessage}
+          onStartGuide={handleStartGuide}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 }
