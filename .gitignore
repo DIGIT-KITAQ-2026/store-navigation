@@ -39,3 +39,38 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Unity (unity/ サブフォルダにUnityプロジェクトを配置する予定のための除外設定)
+# Unity generated folders
+unity/Library/
+unity/Temp/
+unity/Logs/
+unity/UserSettings/
+unity/obj/
+unity/Build/
+unity/Builds/
+unity/MemoryCaptures/
+unity/Recordings/
+
+# IDE-generated files/folders (Unity側)
+unity/.vs/
+unity/.idea/
+unity/*.csproj
+unity/*.sln
+unity/*.slnx
+unity/*.user
+unity/*.pidb
+unity/*.booproj
+unity/*.svd
+unity/*.pdb
+unity/*.mdb
+unity/*.opendb
+unity/*.VC.db
+
+# ローカルのUnity WebGL出力先(個人版の重複ビルドはコピーしない前提)
+unity/WebGLExport/
+WebGLExport/
+WebGLExport2/
+WebGLExport3/
+WebGLExport4/
+WebGLExportold/
