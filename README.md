@@ -19,6 +19,8 @@
 
 ## Getting Started
 
+`.env.local.example` を `.env.local` にコピーし、`SUPABASE_SERVICE_ROLE_KEY` をSupabaseダッシュボード(Project Settings > API)から取得して設定する(`.env.local` はコミットしないこと)。
+
 開発サーバーを起動する。
 
 ```bash
