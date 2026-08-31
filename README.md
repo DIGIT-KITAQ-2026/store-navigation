@@ -12,7 +12,7 @@
 | フロントエンド/バックエンド | Next.js(このリポジトリ) |
 | データベース | Supabase(テーブル設計確定済み。詳細は[`docs/データベース設計.md`](./docs/データベース設計.md)を参照) |
 | 3Dナビゲーション | Unity WebGLビルドをNext.jsページに埋め込み |
-| AI(商品検索) | Claude Agent SDK(claude.aiサブスクリプションのOAuth認証) |
+| AI(商品検索) | `claude`コマンド(Claude Code CLI)をNext.jsのAPI routeからサブプロセス呼び出し。claudeサブスクリプションのログインをそのまま利用し、Anthropic APIキーは使わない |
 | バーコード/QR読取 | ブラウザのカメラAPI |
 
 詳細な機能・画面仕様は [`docs/仕様書.md`](./docs/仕様書.md)、UIのデザインルールは [`DESIGN.md`](./DESIGN.md) を参照。
@@ -20,6 +20,11 @@
 ## Getting Started
 
 `.env.local.example` を `.env.local` にコピーし、`SUPABASE_SERVICE_ROLE_KEY` をSupabaseダッシュボード(Project Settings > API)から取得して設定する(`.env.local` はコミットしないこと)。
+
+商品検索(`/api/search`)は`claude`コマンド(Claude Code CLI)をサーバーから呼び出すため、
+`npm run dev` を実行するマシンで `claude login` を済ませておくこと(このリポジトリを開発している
+Claude Code自身が既にログイン済みなら追加作業は不要)。インタラクティブログインできない環境では
+`.env.local.example` のコメントに従い `CLAUDE_CODE_OAUTH_TOKEN` を設定する。
 
 開発サーバーを起動する。
 
