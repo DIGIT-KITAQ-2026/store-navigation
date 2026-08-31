@@ -1,4 +1,7 @@
-import spawn from "cross-spawn";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 export interface CatalogItem {
   id: string;
@@ -30,82 +33,30 @@ const RESULT_JSON_SCHEMA = {
   required: ["matches"],
 };
 
-const MAX_STDOUT_BYTES = 10 * 1024 * 1024;
-const CLI_TIMEOUT_MS = 30_000;
-
-const SYSTEM_PROMPT = [
-  "あなたはスーパー・コンビニの店内商品検索アシスタントです。",
-  "ユーザーメッセージで渡された商品リスト(JSON配列)の中だけから、検索語に合う商品を選び、",
-  "指定されたJSON Schemaに従ってstructured_outputのみを返してください。",
-  "ファイルの読み書き、コマンド実行、Gitの状態、プロジェクトの設定など、",
-  "ユーザーメッセージに含まれていない情報は一切参照・言及しないでください。",
-].join("\n");
-
 interface ClaudeCliResult {
   is_error: boolean;
   result: string;
   structured_output?: { matches?: ClaudeSearchMatch[] };
 }
 
-function buildUserPrompt(query: string, catalog: CatalogItem[]): string {
-  return [`検索語: ${query}`, "", `商品リスト: ${JSON.stringify(catalog)}`].join("\n");
-}
-
-/**
- * `claude` CLIをサブプロセス実行し、標準出力を文字列で返す。
- * `cross-spawn`を使うのは、Windowsのnpmグローバルインストールでは`claude`の実体が
- * `.cmd`(バッチファイル)であり、`child_process.execFile`では`ENOENT`になるため
- * (`cross-spawn`はWindowsでの実行ファイル解決・引数エスケープを吸収するdrop-in代替)。
- */
-function runClaudeCli(args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("claude", args, { timeout: CLI_TIMEOUT_MS });
-
-    let stdout = "";
-    let stderr = "";
-    let exceededMaxBuffer = false;
-
-    child.stdout?.on("data", (chunk: Buffer) => {
-      if (exceededMaxBuffer) return;
-      stdout += chunk.toString("utf8");
-      if (stdout.length > MAX_STDOUT_BYTES) {
-        exceededMaxBuffer = true;
-        child.kill();
-      }
-    });
-
-    child.stderr?.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-
-    child.on("error", (error) => {
-      reject(error);
-    });
-
-    child.on("close", (code) => {
-      if (exceededMaxBuffer) {
-        reject(new Error("claude CLIの出力がmaxBufferの上限を超えました"));
-        return;
-      }
-      if (code !== 0) {
-        reject(new Error(`claude CLIが終了コード${code}で終了しました: ${stderr || stdout}`));
-        return;
-      }
-      resolve(stdout);
-    });
-  });
+function buildPrompt(query: string, catalog: CatalogItem[]): string {
+  return [
+    "あなたはスーパー・コンビニの店内商品検索アシスタントです。",
+    "以下の商品リスト(JSON配列)の中から、ユーザーの検索語に合う商品をすべて選んでください。",
+    "商品名の部分一致だけでなく、「カレーに使う調味料」「朝食に必要なもの」のような",
+    "用途・目的を表す抽象的な検索語にも対応し、関連する商品を見つけてください。",
+    "該当する商品がない場合は matches を空配列にしてください。存在しないIDを作らないでください。",
+    "",
+    `検索語: ${query}`,
+    "",
+    `商品リスト: ${JSON.stringify(catalog)}`,
+  ].join("\n");
 }
 
 /**
  * Claude Code CLI(`claude`コマンド)をサーバーから直接呼び出し、自然文の検索語に合う商品を
  * 商品リストの中から選ばせる。Anthropic APIキーは使わず、この開発機/デプロイ先にログイン済みの
  * claudeサブスクリプション認証(`claude login` / `claude setup-token`)をそのまま利用する。
- *
- * `--system-prompt`でデフォルトのシステムプロンプト(cwd・環境情報・git status等を自動で
- * 含む)を独自の役割説明に置き換え、`--safe-mode`でCLAUDE.md等のカスタマイズを、
- * `--strict-mcp-config`でこのリポジトリの.mcp.jsonのMCPサーバー読み込みを無効化する。
- * これにより、渡した商品リスト以外の情報(リポジトリの状態など)が応答に混入しないようにする。
- * (`--bare`は同様の効果があるがOAuth/キーチェーン認証が使えなくなるため使用しない)
  */
 export async function searchProductsWithClaude(
   query: string,
@@ -113,22 +64,13 @@ export async function searchProductsWithClaude(
 ): Promise<ClaudeSearchMatch[]> {
   if (catalog.length === 0) return [];
 
-  const userPrompt = buildUserPrompt(query, catalog);
+  const prompt = buildPrompt(query, catalog);
 
-  const stdout = await runClaudeCli([
-    "--output-format",
-    "json",
-    "--tools",
-    "",
-    "--json-schema",
-    JSON.stringify(RESULT_JSON_SCHEMA),
-    "--system-prompt",
-    SYSTEM_PROMPT,
-    "--safe-mode",
-    "--strict-mcp-config",
-    "-p",
-    userPrompt,
-  ]);
+  const { stdout } = await execFileAsync(
+    "claude",
+    ["-p", prompt, "--output-format", "json", "--tools", "", "--json-schema", JSON.stringify(RESULT_JSON_SCHEMA)],
+    { timeout: 30_000, maxBuffer: 10 * 1024 * 1024 }
+  );
 
   const parsed = JSON.parse(stdout) as ClaudeCliResult;
 
