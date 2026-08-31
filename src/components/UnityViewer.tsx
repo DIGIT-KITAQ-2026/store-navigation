@@ -66,7 +66,7 @@ export default function UnityViewer({ ref }: UnityViewerProps) {
         <p className="mt-1 text-sm text-slate-600">検索した商品の場所と案内ルートを確認できます</p>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-xl border border-blue-100 bg-slate-100 aspect-video max-h-[320px] min-h-[280px] sm:max-h-[420px] sm:min-h-[420px]">
+      <div className="relative w-full overflow-hidden rounded-xl border border-blue-100 bg-slate-100 aspect-video max-h-[320px] min-h-[280px] sm:max-h-[420px] sm:min-h-[420px] lg:max-h-[360px] lg:min-h-[360px]">
         <iframe
           key={reloadKey}
           ref={handleIframeRef}
