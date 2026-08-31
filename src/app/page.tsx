@@ -79,15 +79,52 @@ export default function Home() {
 
   return (
     <div className="min-h-full bg-slate-50">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:py-10">
         <header className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">商品を探す</h1>
+          <div className="flex items-center gap-2">
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              className="h-6 w-6 shrink-0 text-blue-600 sm:h-7 sm:w-7"
+            >
+              <path
+                fill="currentColor"
+                d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.847 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742z"
+              />
+              <circle cx="12" cy="10.5" r="3" fill="white" />
+            </svg>
+            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">商品を探す</h1>
+          </div>
           <p className="text-sm text-slate-600 sm:text-base">
             商品名や、作りたいもの・目的から売り場を検索できます
           </p>
         </header>
 
-        <UnityViewer ref={unityViewerRef} />
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[31fr_19fr] lg:items-start">
+          <UnityViewer ref={unityViewerRef} />
+
+          <div className="flex flex-col gap-6">
+            <section
+              aria-labelledby="search-form-heading"
+              className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5"
+            >
+              <h2 id="search-form-heading" className="text-lg font-bold text-slate-900">
+                商品検索
+              </h2>
+              <SearchBar value={query} onChange={setQuery} onSubmit={() => runSearch(query)} />
+            </section>
+
+            <section
+              aria-label="検索候補"
+              className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5"
+            >
+              <SearchSuggestions
+                suggestions={SEARCH_SUGGESTIONS}
+                onSelect={handleSuggestionSelect}
+              />
+            </section>
+          </div>
+        </div>
 
         <section
           aria-labelledby="search-results-heading"
@@ -118,23 +155,6 @@ export default function Home() {
           {status === "has-results" && (
             <SearchResults results={results} onViewLocation={handleViewLocation} />
           )}
-        </section>
-
-        <section
-          aria-labelledby="search-form-heading"
-          className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5"
-        >
-          <h2 id="search-form-heading" className="text-lg font-bold text-slate-900">
-            商品検索
-          </h2>
-          <SearchBar value={query} onChange={setQuery} onSubmit={() => runSearch(query)} />
-        </section>
-
-        <section
-          aria-label="検索候補"
-          className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm sm:p-5"
-        >
-          <SearchSuggestions suggestions={SEARCH_SUGGESTIONS} onSelect={handleSuggestionSelect} />
         </section>
       </div>
 
