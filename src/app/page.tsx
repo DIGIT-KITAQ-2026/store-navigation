@@ -7,7 +7,6 @@ import SearchSuggestions from "@/components/SearchSuggestions";
 import SearchResults from "@/components/SearchResults";
 import EmptyState from "@/components/EmptyState";
 import GuideModal from "@/components/GuideModal";
-import { searchProducts } from "@/lib/searchProducts";
 import { guideToShelf } from "@/lib/unityBridge";
 import type { SearchResultItem } from "@/types/product";
 
@@ -15,30 +14,25 @@ type SearchStatus = "idle" | "loading" | "empty-query" | "has-results" | "no-res
 
 const SEARCH_SUGGESTIONS = ["牛乳", "朝食に必要なもの", "カレーの材料", "飲み物が欲しい"];
 
-const SEARCH_DELAY_MS = 350;
-
 export default function Home() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<SearchResultItem | null>(null);
   const [guideMessage, setGuideMessage] = useState<string | null>(null);
+  const [usedFallback, setUsedFallback] = useState(false);
 
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const unityViewerRef = useRef<UnityViewerHandle>(null);
 
   useEffect(() => {
     return () => {
-      if (searchTimeoutRef.current !== null) {
-        clearTimeout(searchTimeoutRef.current);
-      }
+      abortControllerRef.current?.abort();
     };
   }, []);
 
   const runSearch = (rawQuery: string) => {
-    if (searchTimeoutRef.current !== null) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    abortControllerRef.current?.abort();
 
     if (rawQuery.trim().length === 0) {
       setStatus("empty-query");
@@ -48,11 +42,28 @@ export default function Home() {
 
     setStatus("loading");
 
-    searchTimeoutRef.current = setTimeout(() => {
-      const found = searchProducts(rawQuery);
-      setResults(found);
-      setStatus(found.length > 0 ? "has-results" : "no-results");
-    }, SEARCH_DELAY_MS);
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    fetch("/api/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: rawQuery }),
+      signal: abortController.signal,
+    })
+      .then((response) => response.json())
+      .then((data: { results?: SearchResultItem[]; usedFallback?: boolean }) => {
+        const found = data.results ?? [];
+        setResults(found);
+        setUsedFallback(data.usedFallback ?? false);
+        setStatus(found.length > 0 ? "has-results" : "no-results");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setResults([]);
+        setUsedFallback(false);
+        setStatus("no-results");
+      });
   };
 
   const handleSuggestionSelect = (value: string) => {
@@ -147,6 +158,12 @@ export default function Home() {
           )}
 
           {status === "empty-query" && <EmptyState message="商品名や目的を入力してください" />}
+
+          {(status === "no-results" || status === "has-results") && usedFallback && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-700">
+              AI検索が一時的に利用できないため、通常検索(部分一致)の結果を表示しています
+            </p>
+          )}
 
           {status === "no-results" && (
             <EmptyState message="該当する商品が見つかりませんでした。別の言葉で検索してください。" />

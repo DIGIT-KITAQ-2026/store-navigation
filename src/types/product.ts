@@ -4,7 +4,6 @@ export interface Product {
   category: string;
   shelfId: string;
   shelfNumber: string;
-  keywords: string[];
   description: string;
 }
 
