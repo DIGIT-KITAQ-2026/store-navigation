@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import SearchBar from "@/components/ui/SearchBar";
 import EmptyState from "@/components/ui/EmptyState";
@@ -46,15 +47,14 @@ function writeCachedResults(rawQuery: string, entry: CachedSearchEntry): void {
 
 export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const router = useRouter();
-  const initialCached = readCachedResults(initialQuery);
+  // サーバーとクライアントの初回レンダーを一致させるため、ここではsessionStorageを参照しない。
+  // 復元はマウント後のuseEffect内でのみ行う。
   const [query, setQuery] = useState(initialQuery);
-  const [status, setStatus] = useState<SearchStatus>(() => {
-    if (initialQuery.trim().length === 0) return "empty-query";
-    if (initialCached) return initialCached.results.length > 0 ? "has-results" : "no-results";
-    return "loading";
-  });
-  const [results, setResults] = useState<SearchResultItem[]>(initialCached?.results ?? []);
-  const [usedFallback, setUsedFallback] = useState(initialCached?.usedFallback ?? false);
+  const [status, setStatus] = useState<SearchStatus>(() =>
+    initialQuery.trim().length === 0 ? "empty-query" : "loading"
+  );
+  const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [usedFallback, setUsedFallback] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -100,8 +100,17 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   };
 
   useEffect(() => {
-    if (initialQuery.trim().length > 0 && !initialCached) {
-      executeSearch(initialQuery);
+    if (initialQuery.trim().length > 0) {
+      const cached = readCachedResults(initialQuery);
+      if (cached) {
+        // ハイドレーション不一致を避けるため、sessionStorageの復元はマウント後のここでのみ行う
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setResults(cached.results);
+        setUsedFallback(cached.usedFallback);
+        setStatus(cached.results.length > 0 ? "has-results" : "no-results");
+      } else {
+        executeSearch(initialQuery);
+      }
     }
 
     return () => {
@@ -143,9 +152,18 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         </div>
 
         {status === "loading" && (
-          <p role="status" className="text-center text-sm font-medium text-on-surface-variant">
-            検索中です…
-          </p>
+          <div className="flex flex-col items-center gap-3">
+            <Image
+              src="/images/design-reference/store-search-empty.png"
+              alt="水彩で描かれたスーパーマーケット"
+              width={800}
+              height={400}
+              className="h-auto w-[176px] max-w-full object-contain opacity-90 md:w-[220px]"
+            />
+            <p role="status" className="text-center text-sm font-medium text-on-surface-variant">
+              検索中です…
+            </p>
+          </div>
         )}
 
         {status === "empty-query" && <EmptyState message="商品名や目的を入力してください" />}
@@ -157,7 +175,10 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         )}
 
         {status === "no-results" && (
-          <EmptyState message="該当する商品が見つかりませんでした。別の言葉で検索してください。" />
+          <EmptyState
+            message="該当する商品が見つかりませんでした。別の言葉で検索してください。"
+            showImage
+          />
         )}
 
         {status === "has-results" && <SearchResults results={results} />}

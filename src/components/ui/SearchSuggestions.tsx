@@ -6,15 +6,17 @@ interface SearchSuggestionsProps {
 
 export default function SearchSuggestions({ suggestions }: SearchSuggestionsProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar md:flex-wrap md:justify-center md:overflow-visible">
+    <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:justify-center">
       {suggestions.map((suggestion) => (
         <Link
           key={suggestion}
           href={`/search?q=${encodeURIComponent(suggestion)}`}
           aria-label={`「${suggestion}」で検索する`}
-          className="whitespace-nowrap rounded-full border border-outline-variant bg-surface px-4 py-2 text-sm font-medium text-on-surface transition-colors hover:border-primary hover:text-primary md:px-6"
+          className="group flex min-h-[44px] w-full items-center justify-center rounded-full border border-outline-variant bg-surface px-4 py-2 text-center transition-colors hover:border-primary focus-visible:border-primary max-md:hover:bg-primary-container/30 max-md:focus-visible:bg-primary-container/30 md:min-h-0 md:w-auto md:px-6"
         >
-          {suggestion}
+          <span className="line-clamp-2 text-sm font-medium text-on-surface transition-colors group-hover:text-primary group-focus-visible:text-primary md:line-clamp-none md:whitespace-nowrap">
+            {suggestion}
+          </span>
         </Link>
       ))}
     </div>
