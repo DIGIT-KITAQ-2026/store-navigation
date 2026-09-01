@@ -15,28 +15,9 @@ export interface ClaudeSearchMatch {
   reason: string;
 }
 
-const RESULT_JSON_SCHEMA = {
-  type: "object",
-  properties: {
-    matches: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          productId: { type: "string" },
-          reason: { type: "string" },
-        },
-        required: ["productId", "reason"],
-      },
-    },
-  },
-  required: ["matches"],
-};
-
 interface ClaudeCliResult {
   is_error: boolean;
   result: string;
-  structured_output?: { matches?: ClaudeSearchMatch[] };
 }
 
 function buildPrompt(query: string, catalog: CatalogItem[]): string {
@@ -50,7 +31,17 @@ function buildPrompt(query: string, catalog: CatalogItem[]): string {
     `検索語: ${query}`,
     "",
     `商品リスト: ${JSON.stringify(catalog)}`,
+    "",
+    "以下の形式のJSONのみを出力してください。説明文やコードブロック(```)は一切付けないでください:",
+    '{"matches":[{"productId":"...","reason":"..."}]}',
   ].join("\n");
+}
+
+/** Claudeがまれに```json ... ```で囲んで返した場合に備えて取り除く */
+function stripCodeFence(text: string): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  return match ? match[1] : trimmed;
 }
 
 /**
@@ -68,7 +59,7 @@ export async function searchProductsWithClaude(
 
   const { stdout } = await execFileAsync(
     "claude",
-    ["-p", prompt, "--output-format", "json", "--tools", "", "--json-schema", JSON.stringify(RESULT_JSON_SCHEMA)],
+    ["-p", prompt, "--output-format", "json", "--tools", ""],
     { timeout: 30_000, maxBuffer: 10 * 1024 * 1024 }
   );
 
@@ -78,8 +69,10 @@ export async function searchProductsWithClaude(
     throw new Error(`claude CLIがエラーを返しました: ${parsed.result}`);
   }
 
+  const answer = JSON.parse(stripCodeFence(parsed.result)) as { matches?: ClaudeSearchMatch[] };
+
   const validIds = new Set(catalog.map((item) => item.id));
-  const matches = parsed.structured_output?.matches ?? [];
+  const matches = answer.matches ?? [];
 
   return matches.filter((match) => validIds.has(match.productId));
 }
