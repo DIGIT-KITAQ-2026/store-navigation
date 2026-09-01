@@ -12,11 +12,16 @@
 
 Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスになる。
 
+消費者用の3画面(`/`, `/search`, `/navigate/[productId]`)は、共通ヘッダー(`StoreHeader`)を
+共有するルートグループ `src/app/(consumer)/` の下にまとめている(`(consumer)` はURLパスには
+現れない)。
+
 | 画面(仕様書.mdの画面一覧) | 置き場所 | URL |
 |---|---|---|
-| 店舗トップ画面(QR読み取り後) | `src/app/page.tsx` | `/` |
-| AI検索結果画面(商品/マップ/リストタブ) | `src/app/search/page.tsx` | `/search` |
-| Unity WebGLナビゲーション画面 | `src/app/navigate/[productId]/page.tsx` | `/navigate/:productId` |
+| 店舗トップ画面(QR読み取り後) | `src/app/(consumer)/page.tsx` | `/` |
+| AI検索結果画面(商品/マップ/リストタブ) | `src/app/(consumer)/search/page.tsx` | `/search` |
+| Unity WebGLナビゲーション画面 | `src/app/(consumer)/navigate/[productId]/page.tsx` | `/navigate/:productId` |
+| ↑の商品が見つからない場合の表示 | `src/app/(consumer)/navigate/[productId]/not-found.tsx` | (同上、`notFound()`呼び出し時) |
 | 管理者ログイン画面 | `src/app/admin/login/page.tsx` | `/admin/login` |
 | 店舗管理画面(登録/削除/一覧への導線) | `src/app/admin/page.tsx` | `/admin` |
 | 商品登録画面 | `src/app/admin/products/new/page.tsx` | `/admin/products/new` |
@@ -38,13 +43,18 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
 ## 共通ロジック(`src/lib/`)
 
 - `src/lib/supabase/` — Supabaseクライアントの初期化、テーブルアクセス関数
-- `src/lib/claude/` — Claude Agent SDK(OAuth認証)経由での商品検索呼び出し処理
+- `src/lib/aiSearch/` — `claude`コマンド(Claude Code CLI)をサブプロセス実行してのAI商品検索
+  (`searchProductsWithClaude.ts`)と、失敗時の部分一致フォールバック検索(`fallbackSearch.ts`)。
+  当初`src/lib/claude/`にAgent SDK(OAuth認証)経由の実装を置く想定だったが、利用ポリシー上の
+  制約で方式変更したため`aiSearch/`に置き直している(`docs/仕様書.md`の「AI連携仕様」参照)。
+  `src/lib/claude/`は未使用の空フォルダなので新規実装をここに置かないこと
+- `src/lib/unityBridge.ts` — Unity WebGL(iframe)へのpostMessage送信ヘルパー
 - `src/lib/barcode/` — カメラでのバーコード/QR読み取りの共通処理
 
 ## Unity WebGL
 
-Unityでビルドした成果物一式は `public/unity/` に配置し、`src/components/features/` 内の
-ビューアコンポーネントから `<iframe>` またはUnityの標準ローダーで読み込む。
+Unityでビルドした成果物一式は `public/unity/` に配置し、`src/components/features/UnityViewer.tsx`
+から `<iframe>` で読み込む。棚IDの送信は`src/lib/unityBridge.ts`の`postStartGuideMessage`を使う。
 
 ## 開発を始めるときの手順
 
