@@ -7,6 +7,9 @@ import Link from "next/link";
 import SearchBar from "@/components/ui/SearchBar";
 import EmptyState from "@/components/ui/EmptyState";
 import SearchResults from "@/components/features/SearchResults";
+import { readCachedResults, writeCachedResults } from "@/lib/searchResultsCache";
+import { takePendingImageSearchFile } from "@/lib/pendingImageSearch";
+import { useImageSearch } from "@/lib/useImageSearch";
 import type { SearchResultItem } from "@/types/product";
 
 type SearchStatus = "idle" | "loading" | "empty-query" | "has-results" | "no-results";
@@ -15,39 +18,9 @@ interface SearchScreenProps {
   initialQuery: string;
 }
 
-interface CachedSearchEntry {
-  results: SearchResultItem[];
-  usedFallback: boolean;
-}
-
-const RESULT_CACHE_KEY = "search-results-cache";
-
-// /navigate/[productId]から「検索結果に戻る」した際に同じ検索語であれば再検索せずに
-// 前回の結果を復元するためのキャッシュ。sessionStorageのみに保存し、DB/APIには影響しない。
-function readCachedResults(rawQuery: string): CachedSearchEntry | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(RESULT_CACHE_KEY) ?? "{}");
-    return cache[rawQuery] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function writeCachedResults(rawQuery: string, entry: CachedSearchEntry): void {
-  if (typeof window === "undefined") return;
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(RESULT_CACHE_KEY) ?? "{}");
-    cache[rawQuery] = entry;
-    window.sessionStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(cache));
-  } catch {
-    // sessionStorageが使えない環境でも検索自体は問題なく動作するため何もしない
-  }
-}
-
 export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const router = useRouter();
-  // サーバーとクライアントの初回レンダーを一致させるため、ここではsessionStorageを参照しない。
+  // サーバーとクライアントの初回レンダーを一致させるため、ここではsessionStorage/pending画像を参照しない。
   // 復元はマウント後のuseEffect内でのみ行う。
   const [query, setQuery] = useState(initialQuery);
   const [status, setStatus] = useState<SearchStatus>(() =>
@@ -55,8 +28,10 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   );
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [usedFallback, setUsedFallback] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const { error: imageSearchError, search: searchByImage } = useImageSearch();
 
   // fetch実行のみを行い、setStateは非同期コールバック内でのみ呼ぶ(エフェクト内からの直接呼び出しを許容するため)
   const executeSearch = (rawQuery: string) => {
@@ -99,12 +74,37 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
     executeSearch(rawQuery);
   };
 
+  // 画像検索の実行。ホーム画面からの遷移時(マウント時)・この画面上での再送信の両方から呼ぶ
+  const executeImageSearch = async (file: File) => {
+    setStatus("loading");
+    const outcome = await searchByImage(file);
+
+    if (!outcome) {
+      setAttachedFile(null);
+      setResults([]);
+      setUsedFallback(false);
+      setStatus("no-results");
+      return;
+    }
+
+    setResults(outcome.results);
+    setUsedFallback(outcome.usedFallback);
+    setStatus(outcome.results.length > 0 ? "has-results" : "no-results");
+    writeCachedResults(query, outcome);
+  };
+
   useEffect(() => {
-    if (initialQuery.trim().length > 0) {
+    const pendingFile = takePendingImageSearchFile();
+
+    if (pendingFile) {
+      // ホーム画面から画像検索として遷移してきた場合。この画面側で改めて検索を実行する
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAttachedFile(pendingFile);
+      void executeImageSearch(pendingFile);
+    } else if (initialQuery.trim().length > 0) {
       const cached = readCachedResults(initialQuery);
       if (cached) {
         // ハイドレーション不一致を避けるため、sessionStorageの復元はマウント後のここでのみ行う
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setResults(cached.results);
         setUsedFallback(cached.usedFallback);
         setStatus(cached.results.length > 0 ? "has-results" : "no-results");
@@ -120,16 +120,37 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   }, []);
 
   const handleSubmit = () => {
+    if (attachedFile) {
+      void executeImageSearch(attachedFile);
+      return;
+    }
     router.replace(`/search?q=${encodeURIComponent(query)}`, { scroll: false });
     runSearch(query);
   };
+
+  const handleSelectImage = (file: File) => {
+    setAttachedFile(file);
+    setQuery("");
+  };
+
+  const handleRemoveAttachedImage = () => setAttachedFile(null);
+
+  const isImageSearching = status === "loading" && attachedFile !== null;
 
   return (
     <div className="min-h-full bg-surface pb-28 md:pb-10">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-8 md:py-10">
         {/* デスクトップのみ: 上部インライン検索バー */}
         <div className="hidden max-w-2xl md:block">
-          <SearchBar value={query} onChange={setQuery} onSubmit={handleSubmit} />
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            onSubmit={handleSubmit}
+            attachedFile={attachedFile}
+            onSelectImage={handleSelectImage}
+            onRemoveAttachedImage={handleRemoveAttachedImage}
+            isImageSearching={isImageSearching}
+          />
         </div>
 
         <div className="animate-fade-in-up flex items-center gap-3">
@@ -176,7 +197,9 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
 
         {status === "no-results" && (
           <EmptyState
-            message="該当する商品が見つかりませんでした。別の言葉で検索してください。"
+            message={
+              imageSearchError ?? "該当する商品が見つかりませんでした。別の言葉で検索してください。"
+            }
             showImage
           />
         )}
@@ -187,7 +210,16 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
       {/* モバイルのみ: 画面下部固定の再検索バー */}
       <div className="fixed bottom-0 left-0 w-full bg-gradient-to-t from-surface via-surface to-transparent px-4 py-3 md:hidden">
         <div className="mx-auto max-w-2xl">
-          <SearchBar value={query} onChange={setQuery} onSubmit={handleSubmit} />
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            onSubmit={handleSubmit}
+            imageMenuPosition="up"
+            attachedFile={attachedFile}
+            onSelectImage={handleSelectImage}
+            onRemoveAttachedImage={handleRemoveAttachedImage}
+            isImageSearching={isImageSearching}
+          />
         </div>
       </div>
     </div>
