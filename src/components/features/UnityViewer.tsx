@@ -3,7 +3,7 @@
 import { useImperativeHandle, useRef, useState } from "react";
 import { postStartGuideMessage } from "@/lib/unityBridge";
 
-const UNITY_BUILD_URL = "/unity/index.html";
+const UNITY_BUILD_URL = "/unity-rodin/index.html";
 const LOAD_TIMEOUT_MS = 8000;
 
 export interface UnityViewerHandle {
