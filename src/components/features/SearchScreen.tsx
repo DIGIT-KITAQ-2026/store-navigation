@@ -132,7 +132,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
           <SearchBar value={query} onChange={setQuery} onSubmit={handleSubmit} />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="animate-fade-in-up flex items-center gap-3">
           <Link
             href="/"
             aria-label="戻る"
@@ -152,7 +152,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         </div>
 
         {status === "loading" && (
-          <div className="flex flex-col items-center gap-3">
+          <div className="animate-fade-in-up flex flex-col items-center gap-3">
             <Image
               src="/images/design-reference/store-search-empty.png"
               alt="水彩で描かれたスーパーマーケット"
@@ -169,7 +169,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         {status === "empty-query" && <EmptyState message="商品名や目的を入力してください" />}
 
         {(status === "no-results" || status === "has-results") && usedFallback && (
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-700">
+          <p className="animate-fade-in-up rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-700">
             AI検索が一時的に利用できないため、通常検索(部分一致)の結果を表示しています
           </p>
         )}

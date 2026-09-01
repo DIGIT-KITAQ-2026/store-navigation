@@ -37,13 +37,13 @@ export default function SearchBar({ value, onChange, onSubmit }: SearchBarProps)
         onChange={(event) => onChange(event.target.value)}
         placeholder="他に探したいものはありますか？"
         aria-label="商品名や目的で検索"
-        className="h-14 w-full rounded-full border-none bg-surface pl-12 pr-14 text-base text-on-surface shadow-sm placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary"
+        className="h-14 w-full rounded-full border border-outline-variant bg-surface pl-12 pr-14 text-base text-on-surface shadow-sm placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 md:rounded-xl"
         suppressHydrationWarning
       />
       <button
         type="submit"
         aria-label="検索する"
-        className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-on-primary transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-on-primary transition-[transform,background-color] duration-150 ease-out hover:bg-primary/90 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/40 motion-reduce:transition-none motion-reduce:active:scale-100"
       >
         <span className="material-symbols-outlined text-[20px]">send</span>
       </button>

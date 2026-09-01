@@ -72,7 +72,7 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
         <UnityViewer ref={unityViewerRef} />
       </div>
 
-      <div className="p-4 md:absolute md:bottom-6 md:right-6 md:z-20 md:w-80 md:p-0">
+      <div className="animate-fade-in-up p-4 md:absolute md:bottom-6 md:right-6 md:z-20 md:w-80 md:p-0">
         <GuidePanel product={product} guideMessage={guideMessage} onStartGuide={handleStartGuide} />
       </div>
     </div>

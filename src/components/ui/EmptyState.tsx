@@ -9,7 +9,7 @@ export default function EmptyState({ message, showImage = false }: EmptyStatePro
   return (
     <div
       role="status"
-      className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-outline-variant bg-surface px-6 py-10 text-center"
+      className="animate-fade-in-up flex flex-col items-center gap-3 rounded-xl border border-dashed border-outline-variant bg-surface px-6 py-10 text-center"
     >
       {showImage && (
         <Image
