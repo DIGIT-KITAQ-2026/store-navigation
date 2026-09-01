@@ -17,9 +17,9 @@ export default function StoreHeader({ storeName }: StoreHeaderProps) {
         <Image
           src="/images/design-reference/logo.png"
           alt="ロゴ"
-          width={32}
-          height={32}
-          className="h-8 w-8 shrink-0 object-contain"
+          width={40}
+          height={40}
+          className="h-8 w-8 shrink-0 object-contain md:h-10 md:w-10"
         />
         <p className="min-w-0 truncate text-xl font-bold text-on-surface">
           {storeName ?? FALLBACK_STORE_NAME}

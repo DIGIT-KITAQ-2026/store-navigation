@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import SearchBar from "@/components/ui/SearchBar";
 import EmptyState from "@/components/ui/EmptyState";
@@ -143,9 +144,18 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         </div>
 
         {status === "loading" && (
-          <p role="status" className="text-center text-sm font-medium text-on-surface-variant">
-            検索中です…
-          </p>
+          <div className="flex flex-col items-center gap-3">
+            <Image
+              src="/images/design-reference/store-search-empty.png"
+              alt="水彩で描かれたスーパーマーケット"
+              width={800}
+              height={400}
+              className="h-auto w-[176px] max-w-full object-contain opacity-90 md:w-[220px]"
+            />
+            <p role="status" className="text-center text-sm font-medium text-on-surface-variant">
+              検索中です…
+            </p>
+          </div>
         )}
 
         {status === "empty-query" && <EmptyState message="商品名や目的を入力してください" />}
@@ -157,7 +167,10 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         )}
 
         {status === "no-results" && (
-          <EmptyState message="該当する商品が見つかりませんでした。別の言葉で検索してください。" />
+          <EmptyState
+            message="該当する商品が見つかりませんでした。別の言葉で検索してください。"
+            showImage
+          />
         )}
 
         {status === "has-results" && <SearchResults results={results} />}
