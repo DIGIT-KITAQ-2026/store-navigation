@@ -47,15 +47,14 @@ function writeCachedResults(rawQuery: string, entry: CachedSearchEntry): void {
 
 export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const router = useRouter();
-  const initialCached = readCachedResults(initialQuery);
+  // サーバーとクライアントの初回レンダーを一致させるため、ここではsessionStorageを参照しない。
+  // 復元はマウント後のuseEffect内でのみ行う。
   const [query, setQuery] = useState(initialQuery);
-  const [status, setStatus] = useState<SearchStatus>(() => {
-    if (initialQuery.trim().length === 0) return "empty-query";
-    if (initialCached) return initialCached.results.length > 0 ? "has-results" : "no-results";
-    return "loading";
-  });
-  const [results, setResults] = useState<SearchResultItem[]>(initialCached?.results ?? []);
-  const [usedFallback, setUsedFallback] = useState(initialCached?.usedFallback ?? false);
+  const [status, setStatus] = useState<SearchStatus>(() =>
+    initialQuery.trim().length === 0 ? "empty-query" : "loading"
+  );
+  const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [usedFallback, setUsedFallback] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -101,8 +100,17 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   };
 
   useEffect(() => {
-    if (initialQuery.trim().length > 0 && !initialCached) {
-      executeSearch(initialQuery);
+    if (initialQuery.trim().length > 0) {
+      const cached = readCachedResults(initialQuery);
+      if (cached) {
+        // ハイドレーション不一致を避けるため、sessionStorageの復元はマウント後のここでのみ行う
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setResults(cached.results);
+        setUsedFallback(cached.usedFallback);
+        setStatus(cached.results.length > 0 ? "has-results" : "no-results");
+      } else {
+        executeSearch(initialQuery);
+      }
     }
 
     return () => {
