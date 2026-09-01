@@ -11,6 +11,7 @@
   --color-on-surface-variant: #475467;
   --color-outline: #94a3b8;
   --color-outline-variant: #eaecf0;
+  --color-hero-mint: #34d399;
 }
 
 @theme inline {
@@ -47,4 +48,602 @@ body {
     "wght" 400,
     "GRAD" 0,
     "opsz" 24;
+}
+
+/* 落ち着いた入場演出(フェード+わずかな移動)。transform/opacityのみでrequestAnimationFrameは使わない */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation-name: fade-in-up;
+  animation-duration: 400ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===================================================================
+   ホーム画面: 店舗写真ヒーロー + 前面にせり上がる検索カード
+
+   3層構造(position/z-indexを明示し、偶然のスタッキングコンテキストに依存しない):
+   1. .store-hero-bg     背景レイヤー(店舗写真+オーバーレイ)z-index: 0
+   2. .store-hero-content ヒーローコンテンツレイヤー(タイトル/コピー/CTA) z-index: 10
+   3. .store-search-card  検索カードレイヤー(白いパネル、前面) z-index: 20
+
+   検索カードは通常のドキュメントフローに置かず、常に absolute + inset で
+   ヒーローと同じ高さの箱を確保したまま translateY だけで上下させる。
+   カード自身の高さ(=ヒーローと同じ100%)に対する相対translateYを使うことで、
+   「初期状態は上端だけを覗かせる」「展開時は画面上から43-48%(PC)/18-25%(スマホ)で止める」
+   をコンテンツ量に依存せず一定に保てる。
+   =================================================================== */
+
+.store-hero {
+  background-color: var(--color-surface);
+}
+
+/* ---------- 背景レイヤー ---------- */
+
+.store-hero-bg {
+  overflow: hidden;
+}
+
+.store-hero-bg-image {
+  transform: scale(1);
+  /* 写真本来の明るさ(白・緑・青空)を残すため一律の減光はしない。可読性は左側のオーバーレイで確保する */
+  filter: brightness(1) blur(0px);
+  animation: store-hero-bg-intro 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes store-hero-bg-intro {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* 検索カード展開中の背景: 右半分を暗くする全面レイヤーは追加せず、
+   ごくわずかなscale/blur/brightnessのみで「奥へ退く」印象を出す(brightness 0.96以上を維持) */
+.store-hero.is-expanded .store-hero-bg-image {
+  transform: scale(1.035);
+  filter: brightness(0.97) blur(0.5px);
+}
+
+/* スマホの展開中背景: PCより少し大きめのscale(1.06-1.08)にする。PC(768px以上)には影響しない */
+@media (max-width: 767px) {
+  .store-hero.is-expanded .store-hero-bg-image {
+    transform: scale(1.07);
+    filter: brightness(0.97) blur(0.5px);
+  }
+}
+
+/* モバイル: タイトル〜CTAは左揃え・画面下寄りにまとまるため、単純な黒ではなく深い緑を
+   左下を起点にしたradial-gradientで局所的に暗くする。青空(上部)と右側は明るいまま残す */
+.store-hero-overlay-left {
+  background-image: radial-gradient(
+    120% 85% at 6% 100%,
+    rgba(6, 50, 37, 0.44) 0%,
+    rgba(7, 58, 42, 0.3) 28%,
+    rgba(8, 62, 44, 0.14) 52%,
+    rgba(8, 62, 44, 0.05) 72%,
+    rgba(8, 62, 44, 0) 90%
+  );
+}
+
+/* PC: 添付イメージのように左側(タイトルがある側)だけを濃い緑で暗くし、
+   画面幅60%以降は完全に透明にして右側の青空・建物・入口・青果・カートを
+   ほぼ原画像のままの明るさで見せる */
+@media (min-width: 768px) {
+  .store-hero-overlay-left {
+    background-image: linear-gradient(
+      90deg,
+      rgba(5, 45, 34, 0.72) 0%,
+      rgba(7, 54, 40, 0.58) 20%,
+      rgba(9, 66, 47, 0.32) 35%,
+      rgba(9, 66, 47, 0.08) 50%,
+      rgba(9, 66, 47, 0) 60%
+    );
+  }
+}
+
+/* 補助の下側グラデーション(常に弱め・最大でも0.24)。PCのみ、CTA周辺の可読性を少し補強する。
+   右半分まで暗く見えるほどの濃さにはしない */
+.store-hero-overlay-bottom {
+  background-image: none;
+}
+
+@media (min-width: 768px) {
+  .store-hero-overlay-bottom {
+    background-image: linear-gradient(180deg, rgba(9, 66, 47, 0) 60%, rgba(9, 66, 47, 0.24) 100%);
+  }
+}
+
+/* ---------- ヒーローコンテンツレイヤー ---------- */
+
+/* タイトル文字サイズ: スマホ52-64px/375×667は48-58pxへ縮小/タブレット64-76px/
+   PC 1024px=80-104px/1440px以上=104-152px(1440で約114px、1920で約142px) */
+.store-hero-title {
+  font-size: clamp(3.25rem, 3.06vw + 2.53rem, 4rem);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 768px) {
+  .store-hero-title {
+    font-size: clamp(4rem, 4.71vw + 1.74rem, 4.75rem);
+    line-height: 0.9;
+  }
+}
+
+@media (min-width: 1024px) {
+  .store-hero-title {
+    font-size: clamp(5rem, 5.78vw + 1.3rem, 6.5rem);
+    line-height: 0.88;
+  }
+}
+
+@media (min-width: 1440px) {
+  .store-hero-title {
+    font-size: clamp(6.5rem, 5.83vw + 1.875rem, 9.5rem);
+    line-height: 0.84;
+  }
+}
+
+/* 画面が低いスマホ(375×667など)ではタイトルと行間を自動的に縮める */
+@media (max-height: 720px) {
+  .store-hero-title {
+    font-size: clamp(3rem, 9vw, 3.625rem);
+    line-height: 0.86;
+  }
+}
+
+/* スマホ専用: Smart StoreとNaviを個別サイズにする(Naviをわずかに小さく)。
+   768px以上のPC表示は上記.store-hero-titleの指定のみに従うため影響しない */
+@media (max-width: 767px) {
+  .store-hero-title-line-1 {
+    font-size: 3.5rem; /* 56px (52-60pxの範囲) */
+  }
+
+  .store-hero-title-line-2 {
+    font-size: 3.25rem; /* 52px (50-58pxの範囲) */
+  }
+}
+
+@media (max-width: 767px) and (max-height: 720px) {
+  .store-hero-title-line-1 {
+    font-size: 2.875rem; /* 46px (44-50pxの範囲) */
+  }
+
+  .store-hero-title-line-2 {
+    font-size: 2.75rem; /* 44px (42-48pxの範囲) */
+  }
+}
+
+/* スマホの入場演出: PCと同じ大きな移動量は使わず、控えめな移動量・短めのdurationにする。
+   同名の@keyframesをメディアクエリ内で再定義し、768px以上の演出には影響させない */
+@media (max-width: 767px) {
+  @keyframes store-hero-bg-intro {
+    from {
+      transform: scale(1.03);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  .store-hero-bg-image {
+    animation-duration: 750ms;
+  }
+
+  @keyframes store-hero-title-1-in {
+    from {
+      opacity: 0;
+      transform: translateX(-28px) translateY(8px);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) translateY(0);
+      filter: blur(0);
+    }
+  }
+
+  .store-hero-title-line-1 {
+    animation-duration: 700ms;
+  }
+
+  @keyframes store-hero-title-2-in {
+    from {
+      opacity: 0;
+      transform: translateY(30px) scale(0.96);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+  }
+
+  .store-hero-title-line-2 {
+    animation-duration: 700ms;
+  }
+}
+
+.store-hero-copy-group {
+  display: flex;
+  flex-direction: column;
+  /* スマホ: 要素間を均等に積まず、キャッチコピー-説明文は詰め、Navi直後だけ広めに空ける
+     (広めの余白は次の.store-hero-subcopy-wrapのmargin-topで individually 付与する) */
+  gap: 0.375rem;
+}
+
+@media (min-width: 768px) {
+  .store-hero-copy-group {
+    gap: 0.875rem;
+  }
+}
+
+@media (max-height: 720px) {
+  .store-hero-copy-group {
+    gap: 0.3rem;
+  }
+}
+
+.store-hero-title-line {
+  display: block;
+}
+
+/* background-clip:textによる縦グラデーションは検証したが、この描画環境ではアルファ値に関わらず
+   文字全体がくすんだ灰色に見えてしまい(完全不透明な状態でも発生)、明るい屋根の上での可読性を
+   損なうことを実機検証で確認した。可読性を最優先し、単色+控えめな影で自然な透明感を表現する */
+.store-hero-title-line-1 {
+  color: #ffffff;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  animation: store-hero-title-1-in 950ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+  transition:
+    opacity 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.store-hero-title-line-2 {
+  color: var(--color-hero-mint);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  animation: store-hero-title-2-in 900ms cubic-bezier(0.22, 1, 0.36, 1) 350ms both;
+  transition:
+    opacity 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes store-hero-title-1-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10vw) translateY(12px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes store-hero-title-2-in {
+  from {
+    opacity: 0;
+    transform: translateY(60px) scale(0.92);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* 検索カード展開中: タイトルは完全に消さず、薄い輪郭として背景に残す
+   (Smart Storeは左へ、Naviは上へわずかに動かす。opacity 0.22-0.35) */
+.store-hero.is-expanded .store-hero-title-line-1 {
+  opacity: 0.3;
+  transform: translateX(-40px);
+}
+
+.store-hero.is-expanded .store-hero-title-line-2 {
+  opacity: 0.3;
+  transform: translateY(-28px);
+}
+
+.store-hero-subcopy-wrap {
+  display: block;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: clamp(1.25rem, 4.5vw, 1.5rem);
+  opacity: 1;
+  transition:
+    opacity 550ms ease-out,
+    transform 550ms ease-out;
+}
+
+@media (min-width: 768px) {
+  .store-hero-subcopy-wrap {
+    font-size: clamp(1.5rem, 2.2vw, 2rem);
+  }
+}
+
+/* スマホ: Navi直後だけ広めに余白を取り、キャッチコピー-説明文は詰めて見せる。
+   PC(768px以上)のレイアウトには影響しない */
+@media (max-width: 767px) {
+  .store-hero-subcopy-wrap {
+    margin-top: 0.75rem;
+  }
+}
+
+.store-hero-subcopy-text {
+  display: block;
+  animation: store-hero-subcopy-reveal 750ms cubic-bezier(0.22, 1, 0.36, 1) 550ms both;
+}
+
+@keyframes store-hero-subcopy-reveal {
+  from {
+    transform: translateY(110%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.store-hero-desc {
+  display: block;
+  color: rgba(226, 232, 240, 0.92);
+  font-size: clamp(0.9375rem, 3.6vw, 1.0625rem);
+  max-width: 30rem;
+  opacity: 0;
+  animation: store-hero-copy-in 600ms cubic-bezier(0.22, 1, 0.36, 1) 700ms both;
+  transition:
+    opacity 550ms ease-out,
+    transform 550ms ease-out;
+}
+
+@media (min-width: 768px) {
+  .store-hero-desc {
+    font-size: clamp(1rem, 1.8vw, 1.25rem);
+  }
+}
+
+/* 低いスマホ画面(375×667など)では行間を少し縮め、CTAまでの距離を稼ぐ */
+@media (max-width: 767px) and (max-height: 720px) {
+  .store-hero-desc {
+    line-height: 1.35;
+  }
+}
+
+@keyframes store-hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 検索カード展開中: コピー・説明文はさらに薄くする(opacity 0.08-0.18)。
+   カード内の検索フォームと競合しないようにする */
+.store-hero.is-expanded .store-hero-subcopy-wrap,
+.store-hero.is-expanded .store-hero-desc {
+  opacity: 0.12;
+  transform: translateY(-6px);
+}
+
+.store-hero-cta {
+  opacity: 0;
+  /* スマホ: 説明文とCTAの間は他の間隔より広めに取り、操作導線を独立したグループに見せる */
+  margin-top: 2rem;
+  animation: store-hero-copy-in 550ms cubic-bezier(0.22, 1, 0.36, 1) 950ms both;
+  transition: opacity 380ms ease-out;
+}
+
+@media (min-width: 768px) {
+  .store-hero-cta {
+    margin-top: 1.5rem;
+  }
+}
+
+@media (max-height: 720px) {
+  .store-hero-cta {
+    margin-top: 0.75rem;
+  }
+}
+
+/* 「商品を探す」: 塗りつぶしボタンにせず、細い円の輪郭+矢印、円から伸びる短い縦線、
+   先端の小さなミントの点で構成する。発光やネオンは使わない */
+.store-hero-cta-ring {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.store-hero-cta-line {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.store-hero-cta-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-hero-mint);
+  margin-top: -4px;
+}
+
+/* 検索カード展開中はCTAを隠す(見た目opacity 0 + 操作不可) */
+.store-hero.is-expanded .store-hero-cta {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* シーン1の「商品を探す」下矢印: ゆっくり・小さな上下移動のみ(常時激しく動かさない) */
+@keyframes scroll-hint-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+.scroll-hint-arrow {
+  animation: scroll-hint-bounce 1800ms ease-in-out 1550ms infinite;
+}
+
+/* ---------- 検索カードレイヤー ---------- */
+
+.store-search-card {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  box-shadow: 0 -16px 44px rgba(5, 45, 34, 0.16);
+  border-radius: 32px 32px 0 0;
+  overflow: hidden;
+  /* 初期状態: 上端だけが画面下に見える(表示量は画面高の約5-8%)。
+     カード自身の高さ(=ヒーローと同じ100%)に対する相対値なので、
+     コンテンツの量に関わらずこの覗き量は一定になる */
+  transform: translateY(calc(100% - 6.5dvh));
+  transition: transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+@media (min-width: 768px) {
+  .store-search-card {
+    left: 5%;
+    right: 5%;
+    border-radius: 56px 56px 0 0;
+    /* PC初期状態: 表示量は約84px(70-100pxの範囲) */
+    transform: translateY(calc(100% - 84px));
+  }
+}
+
+/* 低いスマホ画面では初期表示量を5%程度まで抑え、タイトル〜CTAの縦スペースを確保する */
+@media (max-width: 767px) and (max-height: 720px) {
+  .store-search-card {
+    transform: translateY(calc(100% - 5dvh));
+  }
+}
+
+/* 展開状態: カード上端が画面上から18-25%(スマホ)/43-48%(PC)で止まる。
+   scaleは使わず、translateYのみを主役にする。
+   カード自身の高さはヘッダー分(4rem)を除いたヒーロー基準のため、
+   ヘッダー分のオフセットを見込んでビューポート全体に対する割合を逆算した値を使う */
+.store-search-card.is-open {
+  transform: translateY(14%);
+}
+
+@media (min-width: 768px) {
+  .store-search-card.is-open {
+    transform: translateY(42%);
+  }
+}
+
+.store-search-card-inner {
+  -webkit-overflow-scrolling: touch;
+}
+
+.store-search-handle-btn {
+  display: flex;
+  min-height: 56px;
+  width: 100%;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 0 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.store-search-handle {
+  width: 44px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--color-outline-variant);
+}
+
+.store-search-card-content {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 420ms ease-out,
+    transform 420ms ease-out;
+}
+
+.store-search-card.is-open .store-search-card-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 260ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-hero-bg-image,
+  .store-hero-title-line-1,
+  .store-hero-title-line-2,
+  .store-hero-subcopy-wrap,
+  .store-hero-subcopy-text,
+  .store-hero-desc,
+  .store-hero-cta,
+  .store-search-card,
+  .store-search-card-content,
+  .scroll-hint-arrow {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .store-hero.is-expanded .store-hero-bg-image {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .store-hero.is-expanded .store-hero-title-line-1,
+  .store-hero.is-expanded .store-hero-title-line-2,
+  .store-hero.is-expanded .store-hero-subcopy-wrap,
+  .store-hero.is-expanded .store-hero-desc {
+    transform: none !important;
+  }
+
+  .store-hero-title-line-1,
+  .store-hero-title-line-2,
+  .store-hero-subcopy-wrap,
+  .store-hero-desc,
+  .store-hero-cta {
+    opacity: 1 !important;
+  }
+
+  .store-search-card-content {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

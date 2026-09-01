@@ -33,7 +33,7 @@ export default function GuidePanel({ product, guideMessage, onStartGuide }: Guid
       {guideMessage !== null && (
         <p
           role="status"
-          className="mt-3 rounded-lg bg-primary-container px-4 py-3 text-sm font-medium text-on-primary-container"
+          className="animate-fade-in-up mt-3 rounded-lg bg-primary-container px-4 py-3 text-sm font-medium text-on-primary-container"
         >
           {guideMessage}
         </p>
@@ -42,7 +42,7 @@ export default function GuidePanel({ product, guideMessage, onStartGuide }: Guid
       <button
         type="button"
         onClick={onStartGuide}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-base font-bold text-on-primary shadow-md transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2"
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-on-primary shadow-md transition-[background-color,transform] duration-150 ease-out hover:bg-primary/90 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 motion-reduce:transition-none motion-reduce:active:scale-100"
       >
         <span className="material-symbols-outlined">navigation</span>
         3D案内を開始

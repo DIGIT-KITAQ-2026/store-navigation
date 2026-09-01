@@ -91,15 +91,17 @@ export default function UnityViewer({ ref }: UnityViewerProps) {
         className="block h-full w-full border-0"
       />
 
-      {status === "loading" && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/80 px-4 text-center"
-        >
-          <p className="text-sm font-medium text-white">3D店舗を読み込んでいます…</p>
-        </div>
-      )}
+      {/* 読み込み完了時にUnity表示を隠さず、覆っているオーバーレイだけを自然にフェードアウトさせる */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-hidden={status !== "loading"}
+        className={`pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-900/80 px-4 text-center transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+          status === "loading" ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <p className="text-sm font-medium text-white">3D店舗を読み込んでいます…</p>
+      </div>
 
       {status === "failed" && (
         <div
