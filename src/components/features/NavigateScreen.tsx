@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import UnityViewer, { type UnityViewerHandle } from "@/components/features/UnityViewer";
+import StoreNavigation3D from "@/components/store-3d/StoreNavigation3D";
 import GuidePanel from "@/components/features/GuidePanel";
+import { findKnownDestination } from "@/lib/store-navigation/store-layout";
 import type { Product } from "@/types/product";
 
 interface NavigateScreenProps {
@@ -13,13 +14,30 @@ interface NavigateScreenProps {
 export default function NavigateScreen({ product }: NavigateScreenProps) {
   const router = useRouter();
   const [guideMessage, setGuideMessage] = useState<string | null>(null);
-  const unityViewerRef = useRef<UnityViewerHandle>(null);
+  // 「3D案内を開始」が押されたか(経路・矢印・目的地マーカーをStoreNavigation3D側に表示するか)。
+  // 商品ページを開いた直後は常にfalseで、3D店舗自体は見えるが案内表示は出さない
+  const [guideStarted, setGuideStarted] = useState(false);
+
+  // Supabaseから取得済みのshelfIdを、登録済みの正式な棚id(Shelf_01〜08)としてだけ扱う。
+  // 棚未登録・未登録値の場合はnullとなり、3D案内自体を出さない(resolveDestination()の
+  // Shelf_01フォールバックには乗せない。実商品を誤って青果へ案内してしまうため)
+  const destination = findKnownDestination(product.shelfId);
+
+  // 商品(=棚ID)が変わったら、以前の商品ページで案内開始済みだった状態を持ち越さない。
+  // useEffectではなくレンダー中にstateを調整するReact推奨パターンを使う
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  const guideResetKey = `${product.id}:${destination?.id ?? ""}`;
+  const [lastGuideResetKey, setLastGuideResetKey] = useState(guideResetKey);
+  if (guideResetKey !== lastGuideResetKey) {
+    setLastGuideResetKey(guideResetKey);
+    setGuideStarted(false);
+    setGuideMessage(null);
+  }
 
   const handleStartGuide = () => {
-    // Unity側の読み込みが完了していなくても、UnityViewer内部でpendingShelfIdとして
-    // 保留され読み込み完了時に自動送信されるため、ここでは常に呼び出すだけでよい
-    unityViewerRef.current?.startGuideByShelfId(product.shelfId);
-    setGuideMessage(`3D店舗で${product.shelfId}への案内を開始します`);
+    if (!destination) return;
+    setGuideStarted(true);
+    setGuideMessage(`3D店内マップで${destination.label}への案内を表示します`);
   };
 
   const handleBackToSearch = () => {
@@ -35,8 +53,7 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-surface md:h-[calc(100dvh-4rem)] md:min-h-0">
-      {/* モバイル: ヘッダー直下の戻る導線行 */}
-      <div className="flex items-center gap-3 px-4 py-3 md:hidden">
+      <div className="flex items-center gap-3 px-4 py-3">
         <button
           type="button"
           onClick={handleBackToSearch}
@@ -48,32 +65,40 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
         <h1 className="text-xl font-bold text-on-surface">検索結果に戻る</h1>
       </div>
 
-      <div className="relative w-full md:min-h-0 md:flex-1">
-        {/* モバイル: マップ内左上のラベル */}
-        <div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-surface/90 px-3 py-1 text-xs font-semibold text-on-surface-variant shadow-sm md:hidden">
-          <span className="material-symbols-outlined text-[16px]">3d_rotation</span>
-          3D店内マップ
+      <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
+        {/*
+          StoreNavigation3D自体が目的地ラベル・モード切替などの重ねUIを内部で持つため、
+          このラッパーには重複するオーバーレイ(戻るボタン等)を置かない。
+          モバイルはaspect-videoだけに頼ると縦幅が狭すぎる(操作しにくい)ため、
+          min-height + 100dvh基準の高さで最低限の3D操作領域を確保する。
+          PCはmd:flex-1でサイドパネル分を除いた残り幅いっぱいに表示する(高さは変更しない)
+        */}
+        <div className="relative min-h-[280px] h-[52dvh] max-h-[520px] w-full shrink-0 overflow-hidden md:h-full md:max-h-none md:min-h-0 md:aspect-auto md:min-w-0 md:flex-1">
+          {destination ? (
+            <StoreNavigation3D
+              destinationId={destination.id}
+              initialMode="auto-demo"
+              guideVisible={guideStarted}
+              className="h-full w-full"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-surface-variant/40 px-6 text-center">
+              <p className="text-sm font-medium text-on-surface-variant">
+                この商品の売り場情報は現在準備中です
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* デスクトップ: マップに重ねる戻る導線とラベル */}
-        <button
-          type="button"
-          onClick={handleBackToSearch}
-          className="absolute left-6 top-4 z-10 hidden items-center gap-2 rounded-full border border-outline-variant bg-surface/80 px-4 py-2 text-sm font-medium text-on-surface-variant shadow-sm backdrop-blur-sm transition-colors hover:text-primary md:inline-flex"
-        >
-          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-          検索結果に戻る
-        </button>
-        <div className="absolute right-6 top-4 z-10 hidden items-center gap-2 rounded-lg border border-outline-variant bg-surface/90 px-4 py-2 text-sm font-bold text-on-surface shadow-sm backdrop-blur-md md:flex">
-          <span className="material-symbols-outlined text-primary">3d_rotation</span>
-          3D店内マップ
+        <div className="animate-fade-in-up w-full shrink-0 p-4 md:h-full md:w-[380px] md:overflow-y-auto md:border-l md:border-outline-variant md:p-6">
+          <GuidePanel
+            product={product}
+            destinationLabel={destination?.label ?? null}
+            guideMessage={guideMessage}
+            guideStarted={guideStarted}
+            onStartGuide={handleStartGuide}
+          />
         </div>
-
-        <UnityViewer ref={unityViewerRef} />
-      </div>
-
-      <div className="animate-fade-in-up p-4 md:absolute md:bottom-6 md:right-6 md:z-20 md:w-80 md:p-0">
-        <GuidePanel product={product} guideMessage={guideMessage} onStartGuide={handleStartGuide} />
       </div>
     </div>
   );
