@@ -48,6 +48,43 @@ export async function getProductWithShelfLocation(productId: string): Promise<Pr
   };
 }
 
+export interface AdminProductListItem {
+  id: string;
+  barcode: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  locationCode: string | null;
+}
+
+/**
+ * 管理者用の商品一覧を取得する。単一デモ店舗のMVPスコープのため店舗を絞り込まず全件返す。
+ * 棚が未配置の商品はlocationCodeがnullになる(呼び出し側で「未配置」等と表示する)。
+ * /admin/products のServer Componentから呼び出す想定。
+ */
+export async function getAdminProductList(): Promise<AdminProductListItem[]> {
+  try {
+    const supabase = createSupabaseServiceClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, barcode, name, category, description, shelves(shelf_locations(location_code))")
+      .order("name");
+
+    if (error || !data) return [];
+
+    return data.map((product) => ({
+      id: product.id,
+      barcode: product.barcode,
+      name: product.name,
+      category: product.category,
+      description: product.description,
+      locationCode: product.shelves?.shelf_locations?.location_code ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * 店舗名・店舗説明を取得する。単一デモ店舗のMVPスコープのため、最初の1件を返す。
  * 消費者画面共通ヘッダー(StoreHeader)・トップページのヒーローセクションから呼び出す想定。
