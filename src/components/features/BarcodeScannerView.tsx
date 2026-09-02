@@ -16,7 +16,18 @@ export default function BarcodeScannerView({ label, onScan }: BarcodeScannerView
   const [manualValue, setManualValue] = useState("");
   const hasScannedRef = useRef(false);
 
-  const { start, stop, isScanning, error } = useBarcodeScanner(scannerElementId, {
+  const {
+    start,
+    stop,
+    isScanning,
+    error,
+    torchSupported,
+    torchOn,
+    toggleTorch,
+    zoomRange,
+    zoomLevel,
+    setZoom,
+  } = useBarcodeScanner(scannerElementId, {
     onDetected: (code) => {
       if (hasScannedRef.current) return;
       hasScannedRef.current = true;
@@ -44,9 +55,43 @@ export default function BarcodeScannerView({ label, onScan }: BarcodeScannerView
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium text-on-surface">{label}</p>
 
-      <div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-variant">
+      <div className="relative overflow-hidden rounded-xl border border-outline-variant bg-surface-variant">
         <div id={scannerElementId} className="aspect-video w-full [&_video]:object-cover" />
+        {isScanning && torchSupported && (
+          <button
+            type="button"
+            onClick={() => void toggleTorch()}
+            aria-pressed={torchOn}
+            className="absolute right-3 bottom-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-lg text-white"
+          >
+            {torchOn ? "🔦" : "💡"}
+          </button>
+        )}
       </div>
+
+      {isScanning && zoomRange && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-on-surface-variant" aria-hidden>
+            🔍
+          </span>
+          <input
+            type="range"
+            min={zoomRange.min}
+            max={zoomRange.max}
+            step={zoomRange.step}
+            value={zoomLevel}
+            onChange={(event) => void setZoom(Number(event.target.value))}
+            className="h-2 flex-1 accent-primary"
+            aria-label="カメラのズーム"
+          />
+        </div>
+      )}
+
+      {isScanning && (
+        <p className="text-center text-xs text-on-surface-variant">
+          近づきすぎるとピントが合わずぼやけるため、10〜15cm程度離してズームで大きく映してください。暗い場所ではライトボタンをお使いください。
+        </p>
+      )}
 
       {!isScanning && !error && (
         <p className="text-center text-xs text-on-surface-variant">カメラを起動しています…</p>

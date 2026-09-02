@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import type { QrDimensions } from "html5-qrcode/esm/core";
 
 // 商品バーコード(JAN/EAN-13)を主対象としつつ、QRコードも読めるようにしておく
 const SUPPORTED_FORMATS = [
@@ -12,6 +13,14 @@ const SUPPORTED_FORMATS = [
   Html5QrcodeSupportedFormats.CODE_128,
   Html5QrcodeSupportedFormats.QR_CODE,
 ];
+
+// EAN-13等の1次元バーコードは横長の帯なので、正方形のqrboxだと読み取り枠内に
+// バーコード全体が収まりにくい。ビューファインダー幅に対して横長の枠を返す。
+function calculateScanBox(viewfinderWidth: number, viewfinderHeight: number): QrDimensions {
+  const width = Math.round(Math.min(viewfinderWidth * 0.9, 500));
+  const height = Math.round(Math.min(viewfinderHeight * 0.55, width * 0.5));
+  return { width, height };
+}
 
 interface UseBarcodeScannerOptions {
   onDetected: (code: string) => void;
@@ -50,12 +59,20 @@ export function useBarcodeScanner(elementId: string, { onDetected }: UseBarcodeS
 
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [zoomRange, setZoomRange] = useState<{ min: number; max: number; step: number } | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const stop = useCallback(async () => {
     generationRef.current += 1;
     const scanner = scannerRef.current;
     scannerRef.current = null;
     setIsScanning(false);
+    setTorchSupported(false);
+    setTorchOn(false);
+    setZoomRange(null);
+    setZoomLevel(1);
     if (scanner) {
       await teardown(scanner);
     }
@@ -68,13 +85,27 @@ export function useBarcodeScanner(elementId: string, { onDetected }: UseBarcodeS
     const generation = ++generationRef.current;
     const scanner = new Html5Qrcode(elementId, {
       formatsToSupport: SUPPORTED_FORMATS,
+      // 対応端末(主にAndroid Chrome)ではネイティブのBarcodeDetector APIを使う。
+      // JS実装(zxing)より高速・高精度で、1次元バーコードの読み取り成功率が大きく上がる。
+      useBarCodeDetectorIfSupported: true,
       verbose: false,
     });
 
     try {
       await scanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
+        {
+          fps: 15,
+          qrbox: calculateScanBox,
+          videoConstraints: {
+            facingMode: "environment",
+            // 低解像度だとバーコードの細い線が潰れて読み取れないため、高めの解像度を要求する
+            // (対応していないカメラでは自動的に最大解像度にフォールバックされる)
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
+          },
+        },
         (decodedText) => onDetectedRef.current(decodedText),
         () => {
           // フレームごとの未検出コールバック。頻繁に呼ばれるため無視する。
@@ -90,6 +121,37 @@ export function useBarcodeScanner(elementId: string, { onDetected }: UseBarcodeS
 
       scannerRef.current = scanner;
       setIsScanning(true);
+
+      // 暗い場所での読み取り失敗が多いため、対応端末ではライト(トーチ)を操作できるようにする
+      try {
+        const torch = scanner.getRunningTrackCameraCapabilities().torchFeature();
+        setTorchSupported(torch.isSupported());
+      } catch {
+        setTorchSupported(false);
+      }
+
+      // スマホのレンズには最短合焦距離があり、近づきすぎるとピント調整不能でぼやける。
+      // 対応端末ではズームを使えるようにし、物理的に近づかなくても大きく映せるようにする
+      try {
+        const zoom = scanner.getRunningTrackCameraCapabilities().zoomFeature();
+        if (zoom.isSupported()) {
+          const min = zoom.min();
+          const max = zoom.max();
+          const step = zoom.step() || 0.1;
+          setZoomRange({ min, max, step });
+
+          // 手動で調整しなくても近づきすぎ問題を緩和できるよう、初期値を少しだけ上げておく
+          const initialZoom = Math.min(max, min + (max - min) * 0.2);
+          setZoomLevel(initialZoom);
+          if (initialZoom !== min) {
+            await zoom.apply(initialZoom);
+          }
+        } else {
+          setZoomRange(null);
+        }
+      } catch {
+        setZoomRange(null);
+      }
     } catch (err) {
       if (generationRef.current === generation) {
         setIsScanning(false);
@@ -102,11 +164,49 @@ export function useBarcodeScanner(elementId: string, { onDetected }: UseBarcodeS
     }
   }, [elementId]);
 
+  const toggleTorch = useCallback(async () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+    try {
+      const torch = scanner.getRunningTrackCameraCapabilities().torchFeature();
+      if (!torch.isSupported()) return;
+      const next = !torchOn;
+      await torch.apply(next);
+      setTorchOn(next);
+    } catch {
+      // ライト操作に失敗しても読み取り自体は継続できるため、エラー表示はしない
+    }
+  }, [torchOn]);
+
+  const setZoom = useCallback(async (value: number) => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+    try {
+      const zoom = scanner.getRunningTrackCameraCapabilities().zoomFeature();
+      if (!zoom.isSupported()) return;
+      await zoom.apply(value);
+      setZoomLevel(value);
+    } catch {
+      // ズーム操作に失敗しても読み取り自体は継続できるため、エラー表示はしない
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       void stop();
     };
   }, [stop]);
 
-  return { start, stop, isScanning, error };
+  return {
+    start,
+    stop,
+    isScanning,
+    error,
+    torchSupported,
+    torchOn,
+    toggleTorch,
+    zoomRange,
+    zoomLevel,
+    setZoom,
+  };
 }

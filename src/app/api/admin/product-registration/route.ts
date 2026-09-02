@@ -1,4 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 
 interface RequestBody {
   mode: "create" | "update";
@@ -8,6 +10,24 @@ interface RequestBody {
   name: string;
   category: string;
   description: string;
+}
+
+// 確定した商品名・説明をバーコード単位で記録しておき、同じバーコードが将来
+// 再スキャンされたときに再利用できるようにする(`/api/admin/product-lookup`が参照する)。
+// 失敗しても商品登録・更新自体は成功させたいので、エラーはログのみに留める。
+async function upsertBarcodeLookupCache(
+  supabase: SupabaseClient<Database>,
+  barcode: string,
+  name: string,
+  description: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("barcode_lookup_cache")
+    .upsert({ barcode, name, description, updated_at: new Date().toISOString() });
+
+  if (error) {
+    console.error("[api/admin/product-registration] バーコードキャッシュの更新に失敗しました", error);
+  }
 }
 
 // 管理者ログイン画面がまだ無いため、暫定的にservice roleキー(サーバー側のみ)で
@@ -55,6 +75,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "商品の更新に失敗しました: " + message }, { status: 400 });
     }
 
+    await upsertBarcodeLookupCache(supabase, body.barcode.trim(), body.name.trim(), body.description.trim());
     return Response.json({ ok: true });
   }
 
@@ -77,5 +98,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "商品の登録に失敗しました: " + message }, { status: 400 });
   }
 
+  await upsertBarcodeLookupCache(supabase, body.barcode.trim(), body.name.trim(), body.description.trim());
   return Response.json({ ok: true });
 }

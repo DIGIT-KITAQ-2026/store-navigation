@@ -16,6 +16,8 @@ type Step =
 
 type Mode = "create" | "update";
 
+type LookupStatus = "idle" | "loading" | "found" | "cache" | "not-found";
+
 interface ShelfInfo {
   id: string;
   locationCode: LocationCode;
@@ -40,8 +42,8 @@ interface ShelfLookupResponse {
 
 // 商品登録・更新の一連の流れ(棚バーコード特定→商品バーコード→商品名/説明→保存)。
 // 棚バーコードは事前登録済みのものだけを対象とし、その場での新規棚作成は行わない。
-// 既に商品が登録されている棚は「更新するか」を確認し、更新する場合は既存の内容を
-// 引き継いで編集できるようにする。
+// 既に商品が登録されている棚は「更新するか」を確認し、更新する場合も含めて
+// 商品バーコードのスキャンは必ず行う(名前・説明のみ既存内容を引き継ぐ)。
 //
 // 管理者ログイン画面がまだ無いため、実際のデータ読み書きは`/api/admin/*`
 // (service roleキーを使うサーバー側API)経由で行う。ログイン機能が完成したら
@@ -59,6 +61,8 @@ export default function ProductRegistrationFlow() {
   const [productBarcode, setProductBarcode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [lookupStatus, setLookupStatus] = useState<LookupStatus>("idle");
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
   async function handleShelfScan(code: string) {
     setError(null);
@@ -98,15 +102,60 @@ export default function ProductRegistrationFlow() {
   function handleStartUpdate() {
     if (!existingProduct) return;
     setMode("update");
-    setProductBarcode(existingProduct.barcode);
+    setProductBarcode("");
     setName(existingProduct.name);
-    setDescription(existingProduct.description);
-    setStep("details");
+    // 説明は引き継がない。スキャンする商品が別物の場合、前の商品の説明が残ったままになるため
+    setDescription("");
+    setLookupStatus("idle");
+    setStep("scan-product");
   }
 
-  function handleProductScan(code: string) {
+  async function handleProductScan(code: string) {
     setProductBarcode(code);
     setStep("details");
+
+    setLookupStatus("loading");
+    try {
+      const response = await fetch(`/api/admin/product-lookup?barcode=${encodeURIComponent(code)}`);
+      const body: { name?: string | null; description?: string | null; source?: "cache" | "yahoo" } =
+        await response.json();
+      if (body.name) {
+        // 更新モードで既存の商品名がプリフィルされていても、スキャンした最新の検索結果で上書きする
+        setName(body.name);
+        if (body.source === "cache" && body.description) {
+          setDescription(body.description);
+        }
+        setLookupStatus(body.source === "cache" ? "cache" : "found");
+      } else {
+        // 見つからない場合は何もせず、更新モードなら既存の商品名をそのまま残す
+        setLookupStatus("not-found");
+      }
+    } catch {
+      // 検索失敗時もエラー扱いにせず手入力に任せる(「見つかりませんでした」と同じ表示にする)
+      setLookupStatus("not-found");
+    }
+  }
+
+  // 商品名からAIに検索用の説明文を一文生成させる(ボタン押下時のみ)。失敗時も手入力で上書きできる
+  async function generateDescription(productName: string) {
+    if (productName.trim().length === 0) return;
+
+    setIsGeneratingDescription(true);
+    try {
+      const response = await fetch("/api/admin/generate-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: productName }),
+      });
+      const body: { description?: string } = await response.json();
+      if (response.ok && body.description) {
+        setDescription(body.description);
+      }
+    } catch {
+      // 失敗時はエラー表示せず手入力に任せる
+    } finally {
+      setIsGeneratingDescription(false);
+    }
   }
 
   function handleDetailsSubmit(event: FormEvent<HTMLFormElement>) {
@@ -152,6 +201,8 @@ export default function ProductRegistrationFlow() {
     setProductBarcode("");
     setName("");
     setDescription("");
+    setLookupStatus("idle");
+    setIsGeneratingDescription(false);
     setError(null);
     setStep("scan-shelf");
   }
@@ -226,6 +277,24 @@ export default function ProductRegistrationFlow() {
               required
               className="h-11 rounded-full border border-outline-variant bg-surface px-4 text-sm text-on-surface outline-none focus:border-primary"
             />
+            {lookupStatus === "loading" && (
+              <p className="text-xs text-on-surface-variant">商品情報を検索中…</p>
+            )}
+            {lookupStatus === "cache" && (
+              <p className="text-xs text-primary">
+                前回このバーコードで登録した内容を自動入力しました。内容を確認してください。
+              </p>
+            )}
+            {lookupStatus === "found" && (
+              <p className="text-xs text-primary">
+                Yahoo!ショッピングで商品情報が見つかったので、商品名を自動入力しました。内容を確認してください。
+              </p>
+            )}
+            {lookupStatus === "not-found" && (
+              <p className="text-xs text-on-surface-variant">
+                Yahoo!ショッピングで該当する商品が見つかりませんでした。商品名を入力してください。
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="description" className="text-sm font-medium text-on-surface">
@@ -237,12 +306,22 @@ export default function ProductRegistrationFlow() {
               onChange={(event) => setDescription(event.target.value)}
               required
               rows={3}
+              placeholder="下のボタンでAIに一文作成させるか、手入力してください"
               className="rounded-2xl border border-outline-variant bg-surface px-4 py-3 text-sm text-on-surface outline-none focus:border-primary"
             />
+            <button
+              type="button"
+              onClick={() => void generateDescription(name)}
+              disabled={name.trim().length === 0 || isGeneratingDescription}
+              className="h-10 self-start rounded-full border border-primary px-4 text-sm font-medium text-primary disabled:opacity-40"
+            >
+              {isGeneratingDescription ? "AIが文章作成中…" : "AI文章作成"}
+            </button>
           </div>
           <button
             type="submit"
-            className="h-11 rounded-full bg-primary text-sm font-bold text-on-primary"
+            disabled={isGeneratingDescription}
+            className="h-11 rounded-full bg-primary text-sm font-bold text-on-primary disabled:opacity-60"
           >
             確認画面へ
           </button>
