@@ -22,6 +22,7 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
 | AI検索結果画面(商品/マップ/リストタブ) | `src/app/(consumer)/search/page.tsx` | `/search` |
 | Unity WebGLナビゲーション画面 | `src/app/(consumer)/navigate/[productId]/page.tsx` | `/navigate/:productId` |
 | ↑の商品が見つからない場合の表示 | `src/app/(consumer)/navigate/[productId]/not-found.tsx` | (同上、`notFound()`呼び出し時) |
+| ブラウザネイティブ3D店内ナビゲーションのデモ画面(Three.js/React Three Fiber。Unity WebGL版`/navigate/[productId]`とは別実装) | `src/app/store-3d-demo/page.tsx` | `/store-3d-demo` |
 | 管理者ログイン画面 | `src/app/admin/login/page.tsx` | `/admin/login` |
 | 店舗管理画面(登録/削除/一覧への導線) | `src/app/admin/page.tsx` | `/admin` |
 | 商品登録画面 | `src/app/admin/products/new/page.tsx` | `/admin/products/new` |
@@ -37,6 +38,9 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
   pillボタン、フローティングアクションボタン、リストアイテムなど)。**特定の画面に依存しない見た目だけの部品**
 - `src/components/features/` — 特定の機能に紐づくコンポーネント(商品検索フォーム、
   バーコード/QRスキャナー、Unity WebGLビューア、商品登録フォームなど)。`ui/` の部品を組み合わせて作る
+- `src/components/store-3d/` — ブラウザネイティブ3D店内ナビゲーション(Three.js / React Three Fiber)
+  専用のコンポーネント群(`/store-3d-demo`用)。既存のUnity WebGL版(`UnityViewer`)とは独立しており、
+  互いに依存しない
 
 迷ったら「他の画面でも使い回せそうか」で判断する。使い回せそうなら `ui/`、その画面専用なら `features/`。
 
@@ -50,6 +54,8 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
   `src/lib/claude/`は未使用の空フォルダなので新規実装をここに置かないこと
 - `src/lib/unityBridge.ts` — Unity WebGL(iframe)へのpostMessage送信ヘルパー
 - `src/lib/barcode/` — カメラでのバーコード/QR読み取りの共通処理
+- `src/lib/store-navigation/` — `store-3d/`向けの型・店内レイアウト(ナビゲーショングラフ)・
+  経路探索(BFS)のみを持つ。Three.js/3D描画のコードはここには置かない(経路計算と3D描画の分離)
 
 ## Unity WebGL
 
