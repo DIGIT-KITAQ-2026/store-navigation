@@ -1,7 +1,4 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
+import { runClaudeCli } from "./claudeCli";
 
 export interface CatalogItem {
   id: string;
@@ -57,11 +54,9 @@ export async function searchProductsWithClaude(
 
   const prompt = buildPrompt(query, catalog);
 
-  const { stdout } = await execFileAsync(
-    "claude",
-    ["-p", prompt, "--output-format", "json", "--tools", ""],
-    { timeout: 30_000, maxBuffer: 10 * 1024 * 1024 }
-  );
+  const { stdout } = await runClaudeCli(["-p", prompt, "--output-format", "json", "--tools", ""], {
+    timeout: 45_000,
+  });
 
   const parsed = JSON.parse(stdout) as ClaudeCliResult;
 
