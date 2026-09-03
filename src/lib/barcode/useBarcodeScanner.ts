@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import type { QrDimensions } from "html5-qrcode/esm/core";
+import { suppressMediaAbortError } from "./suppressMediaAbortError";
 
 // 商品バーコード(JAN/EAN-13)を主対象としつつ、QRコードも読めるようにしておく
 const SUPPORTED_FORMATS = [
@@ -192,8 +193,12 @@ export function useBarcodeScanner(elementId: string, { onDetected }: UseBarcodeS
   }, []);
 
   useEffect(() => {
+    // play()中断のAbortErrorはアンマウント「後」に発生するため、解除を数秒遅らせて
+    // 後始末が終わるまでハンドラを残しておく
+    const release = suppressMediaAbortError();
     return () => {
       void stop();
+      setTimeout(release, 3000);
     };
   }, [stop]);
 
