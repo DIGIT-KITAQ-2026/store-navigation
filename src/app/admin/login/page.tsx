@@ -1,15 +1,33 @@
 "use client";
 
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
+import { supabase } from "@/lib/supabase/client";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // TODO: Supabase Authでの認証に置き換える(Supabaseプロジェクト作成後)
+    setError(null);
+
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+
+    setIsSubmitting(true);
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    setIsSubmitting(false);
+
+    if (signInError) {
+      setError("メールアドレスまたはパスワードが正しくありません。");
+      return;
+    }
+
     router.push("/admin");
+    router.refresh();
   }
 
   return (
@@ -59,11 +77,16 @@ export default function AdminLoginPage() {
             />
           </div>
 
+          {error && (
+            <p className="rounded-admin bg-red-50 px-3 py-2 text-[13px] text-danger">{error}</p>
+          )}
+
           <button
             type="submit"
-            className="mt-2 h-12 rounded-admin border border-primary bg-primary text-[15px] font-semibold text-text-on-primary transition-colors hover:bg-primary-hover active:scale-[0.97]"
+            disabled={isSubmitting}
+            className="mt-2 h-12 rounded-admin border border-primary bg-primary text-[15px] font-semibold text-text-on-primary transition-colors hover:bg-primary-hover active:scale-[0.97] disabled:opacity-60"
           >
-            ログイン
+            {isSubmitting ? "ログイン中…" : "ログイン"}
           </button>
         </form>
       </div>
