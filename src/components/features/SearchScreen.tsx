@@ -135,6 +135,13 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
 
   const handleRemoveAttachedImage = () => setAttachedFile(null);
 
+  const handleVoiceResult = (text: string) => {
+    setAttachedFile(null);
+    setQuery(text);
+    router.replace(`/search?q=${encodeURIComponent(text)}`, { scroll: false });
+    runSearch(text);
+  };
+
   const isImageSearching = status === "loading" && attachedFile !== null;
 
   return (
@@ -149,6 +156,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
             attachedFile={attachedFile}
             onSelectImage={handleSelectImage}
             onRemoveAttachedImage={handleRemoveAttachedImage}
+            onVoiceResult={handleVoiceResult}
             isImageSearching={isImageSearching}
           />
         </div>
@@ -218,6 +226,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
             attachedFile={attachedFile}
             onSelectImage={handleSelectImage}
             onRemoveAttachedImage={handleRemoveAttachedImage}
+            onVoiceResult={handleVoiceResult}
             isImageSearching={isImageSearching}
           />
         </div>
