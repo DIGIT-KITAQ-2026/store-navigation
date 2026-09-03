@@ -1,11 +1,8 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { runClaudeCli } from "./claudeCli";
 import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude";
-
-const execFileAsync = promisify(execFile);
 
 interface ClaudeCliResult {
   is_error: boolean;
@@ -55,10 +52,9 @@ export async function searchProductsWithClaudeVision(
 
     const prompt = buildPrompt(imagePath, catalog);
 
-    const { stdout } = await execFileAsync(
-      "claude",
+    const { stdout } = await runClaudeCli(
       ["-p", prompt, "--output-format", "json", "--tools", "Read", "--add-dir", workDir],
-      { timeout: 45_000, maxBuffer: 10 * 1024 * 1024 }
+      { timeout: 45_000 }
     );
 
     const parsed = JSON.parse(stdout) as ClaudeCliResult;
