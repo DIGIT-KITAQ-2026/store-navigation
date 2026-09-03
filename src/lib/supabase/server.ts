@@ -22,7 +22,9 @@ export function createSupabaseServiceClient() {
 /**
  * 商品IDから商品情報と棚位置(location_code)を取得する。
  * /navigate/[productId] のServer Componentから呼び出す想定。
- * 該当商品が無い、または棚位置が未設定の場合はnullを返す(呼び出し側でnotFound()する)。
+ * 該当商品自体が無い場合のみnullを返す(呼び出し側でnotFound()する)。products.shelf_idは
+ * nullable(棚バーコードでの登録前の商品が存在し得る)なため、棚が未設定の場合はnullにはせず
+ * shelfId/shelfNumberがnullのProductを返す(呼び出し側で「準備中」表示に出し分けるため)
  */
 export async function getProductWithShelfLocation(productId: string): Promise<Product | null> {
   const supabase = createSupabaseServiceClient();
@@ -35,15 +37,14 @@ export async function getProductWithShelfLocation(productId: string): Promise<Pr
 
   if (error || !data) return null;
 
-  const locationCode = data.shelves?.shelf_locations?.location_code;
-  if (!locationCode) return null;
+  const locationCode = data.shelves?.shelf_locations?.location_code ?? null;
 
   return {
     id: data.id,
     name: data.name,
     category: data.category ?? "",
     shelfId: locationCode,
-    shelfNumber: locationCode.replace(/^Shelf_/, ""),
+    shelfNumber: locationCode ? locationCode.replace(/^Shelf_/, "") : null,
     description: data.description ?? "",
   };
 }

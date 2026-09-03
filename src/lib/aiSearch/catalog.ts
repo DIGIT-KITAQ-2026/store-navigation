@@ -52,7 +52,7 @@ export function mapMatchesToResults(
   const catalogById = new Map(catalog.map((item) => [item.id, item]));
 
   return matches
-    .map((match) => {
+    .map((match): SearchResultItem | null => {
       const product = catalogById.get(match.productId);
       const locationCode = locationCodeByProductId.get(match.productId);
       if (!product || !locationCode) return null;

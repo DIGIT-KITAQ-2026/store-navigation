@@ -51,7 +51,11 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         setResults(found);
         setUsedFallback(usedFallbackResult);
         setStatus(found.length > 0 ? "has-results" : "no-results");
-        writeCachedResults(rawQuery, { results: found, usedFallback: usedFallbackResult });
+        // フォールバック(AI検索失敗)の結果はキャッシュしない。キャッシュすると、
+        // 一時的な失敗がその検索語に対して固着し、再訪問時もAI検索が再試行されなくなるため。
+        if (!usedFallbackResult) {
+          writeCachedResults(rawQuery, { results: found, usedFallback: usedFallbackResult });
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -90,7 +94,9 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
     setResults(outcome.results);
     setUsedFallback(outcome.usedFallback);
     setStatus(outcome.results.length > 0 ? "has-results" : "no-results");
-    writeCachedResults(query, outcome);
+    if (!outcome.usedFallback) {
+      writeCachedResults(query, outcome);
+    }
   };
 
   useEffect(() => {
