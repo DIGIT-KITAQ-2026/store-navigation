@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import SearchSuggestions from "@/components/ui/SearchSuggestions";
 import ImageSearchButton from "@/components/ui/ImageSearchButton";
 import AttachedImageChip from "@/components/ui/AttachedImageChip";
+import VoiceSearchButton from "@/components/ui/VoiceSearchButton";
 import { IMAGE_SEARCH_QUERY_LABEL, setPendingImageSearchFile } from "@/lib/pendingImageSearch";
 
 type StoreEntranceHeroProps = {
@@ -18,6 +19,8 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceLoadProgress, setVoiceLoadProgress] = useState<number | null>(null);
   const rootRef = useRef<HTMLElement>(null);
   const cardInnerRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
@@ -32,6 +35,14 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
   };
 
   const handleRemoveAttachedFile = () => setAttachedFile(null);
+
+  // 音声検索も、テキスト検索・画像検索と同じく先に検索結果画面へ遷移してから結果を表示する
+  const handleVoiceResult = (text: string) => {
+    setVoiceError(null);
+    setAttachedFile(null);
+    setQuery(text);
+    router.push(`/search?q=${encodeURIComponent(text)}`);
+  };
 
   // 画像検索は、テキスト検索(ネイティブGET送信で/search?q=...に遷移)と同じく、
   // まず検索結果画面へ遷移してから実際の検索を行う。Fileはメモリ上で結果画面へ受け渡す
@@ -227,14 +238,21 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={showAttachedChip ? "" : "商品名や欲しいものを入力"}
                 aria-label="商品名や欲しいものを入力"
-                className={`h-14 w-full rounded-full border border-outline-variant bg-surface pl-20 pr-16 text-base text-on-surface shadow-[0_10px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 md:shadow-[0_14px_36px_rgba(0,0,0,0.14),0_2px_10px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] ${showAttachedChip ? "text-transparent caret-transparent" : ""}`}
+                className={`h-14 w-full rounded-full border border-outline-variant bg-surface pl-20 pr-24 text-base text-on-surface shadow-[0_10px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 md:shadow-[0_14px_36px_rgba(0,0,0,0.14),0_2px_10px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] ${showAttachedChip ? "text-transparent caret-transparent" : ""}`}
                 suppressHydrationWarning
               />
               {showAttachedChip && attachedFile && (
-                <div className="pointer-events-none absolute inset-y-0 left-12 right-16 flex items-center overflow-hidden">
+                <div className="pointer-events-none absolute inset-y-0 left-12 right-24 flex items-center overflow-hidden">
                   <AttachedImageChip file={attachedFile} onRemove={handleRemoveAttachedFile} />
                 </div>
               )}
+              <div className="absolute right-14 top-1/2 -translate-y-1/2">
+                <VoiceSearchButton
+                  onResult={handleVoiceResult}
+                  onError={setVoiceError}
+                  onLoadProgress={setVoiceLoadProgress}
+                />
+              </div>
               <button
                 type="submit"
                 aria-label="AI検索"
@@ -246,6 +264,18 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
 
             {showAttachedChip && (
               <p className="-mt-3 text-xs text-on-surface-variant">送信ボタンを押すと画像で検索します</p>
+            )}
+
+            {voiceLoadProgress !== null && (
+              <p role="status" className="-mt-3 text-xs text-on-surface-variant">
+                音声認識モデルを準備中です…(初回のみ、{Math.round(voiceLoadProgress)}%)
+              </p>
+            )}
+
+            {voiceError && (
+              <p role="alert" className="-mt-3 text-xs text-red-600">
+                {voiceError}
+              </p>
             )}
 
             <h2 className="flex items-center justify-center gap-2 text-lg font-bold text-on-surface md:text-3xl">
