@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "./database.types";
 
 /**
@@ -8,6 +8,10 @@ import type { Database } from "./database.types";
  * (auth.uid())で評価されるため、管理画面のCRUDはこのクライアント経由で行う。
  * サービスロールキーは使わない(server.tsのservice clientはRLSをバイパスするため
  * 消費者向けAPIからのみ使用すること)。
+ *
+ * `@supabase/supabase-js`の`createClient`ではなく`@supabase/ssr`の
+ * `createBrowserClient`を使う: セッションをlocalStorageではなくCookieに保存するため、
+ * `middleware.ts`(サーバー側)からも同じセッションを参照でき、ログインガードが機能する。
  */
 function createSupabaseBrowserClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -19,7 +23,7 @@ function createSupabaseBrowserClient() {
     );
   }
 
-  return createClient<Database>(url, anonKey);
+  return createBrowserClient<Database>(url, anonKey);
 }
 
 // モジュールスコープで1つだけ生成する(呼び出しごとに作ると"Multiple GoTrueClient

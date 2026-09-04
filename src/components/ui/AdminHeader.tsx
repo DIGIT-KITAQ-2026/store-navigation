@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AdminLogoutButton } from "@/components/ui/AdminLogoutButton";
 
 type AdminHeaderProps = {
   title: string;
@@ -56,14 +57,7 @@ export function AdminHeader({
 
       <div className="flex items-center gap-2">
         {rightSlot}
-        {showLogout && (
-          <Link
-            href="/"
-            className="flex h-9 items-center rounded-admin border border-border bg-surface px-4 text-[13px] font-semibold text-primary transition-colors hover:bg-surface-highlight"
-          >
-            ログアウト
-          </Link>
-        )}
+        {showLogout && <AdminLogoutButton />}
       </div>
     </header>
   );
