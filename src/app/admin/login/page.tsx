@@ -31,21 +31,16 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-1 items-center justify-center bg-surface-alt px-4 py-12">
-      <div className="w-full max-w-sm rounded-admin border border-border bg-surface p-8">
-        <h1 className="text-center text-2xl leading-[1.3] font-bold text-text-primary">
-          店舗管理者ログイン
-        </h1>
-        <p className="mt-2 text-center text-[15px] leading-[1.6] text-text-secondary">
+    <div className="flex min-h-dvh flex-1 items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm rounded-xl border border-outline-variant bg-surface p-8 shadow-sm">
+        <h1 className="text-center text-2xl font-bold text-on-surface">店舗管理者ログイン</h1>
+        <p className="mt-2 text-center text-sm leading-relaxed text-on-surface-variant">
           メールアドレスとパスワードを入力してください
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="email"
-              className="text-[15px] font-medium text-text-primary"
-            >
+            <label htmlFor="email" className="text-sm font-medium text-on-surface">
               メールアドレス
             </label>
             <input
@@ -55,15 +50,12 @@ export default function AdminLoginPage() {
               autoComplete="username"
               required
               placeholder="例: admin@example.com"
-              className="h-12 rounded-admin border border-border bg-surface px-4 text-[15px] text-text-primary outline-none focus:border-primary"
+              className="h-12 rounded-full border border-outline-variant bg-surface px-4 text-sm text-on-surface outline-none focus:border-primary"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="password"
-              className="text-[15px] font-medium text-text-primary"
-            >
+            <label htmlFor="password" className="text-sm font-medium text-on-surface">
               パスワード
             </label>
             <input
@@ -73,18 +65,20 @@ export default function AdminLoginPage() {
               autoComplete="current-password"
               required
               placeholder="パスワード"
-              className="h-12 rounded-admin border border-border bg-surface px-4 text-[15px] text-text-primary outline-none focus:border-primary"
+              className="h-12 rounded-full border border-outline-variant bg-surface px-4 text-sm text-on-surface outline-none focus:border-primary"
             />
           </div>
 
           {error && (
-            <p className="rounded-admin bg-red-50 px-3 py-2 text-[13px] text-danger">{error}</p>
+            <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 h-12 rounded-admin border border-primary bg-primary text-[15px] font-semibold text-text-on-primary transition-colors hover:bg-primary-hover active:scale-[0.97] disabled:opacity-60"
+            className="mt-2 h-12 rounded-full bg-primary text-sm font-bold text-on-primary transition-colors hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
           >
             {isSubmitting ? "ログイン中…" : "ログイン"}
           </button>

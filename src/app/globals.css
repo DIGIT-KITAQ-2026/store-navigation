@@ -12,25 +12,6 @@
   --color-outline: #94a3b8;
   --color-outline-variant: #eaecf0;
   --color-hero-mint: #34d399;
-
-  /* 管理者画面(/admin)専用トークン。DESIGN.mdは消費者画面のみが対象のため、
-     ここだけ別の名前空間で定義する。--color-primaryは消費者用の緑と名前が
-     衝突するため、ここでは定義せず.admin-themeスコープ側でのみ上書きする */
-  --color-surface-alt: #f1f3f4;
-  --color-surface-highlight: #dbeafe;
-  --color-text-primary: #1f2124;
-  --color-text-secondary: #5f6368;
-  --color-text-on-primary: #ffffff;
-  --color-border: #e0e2e5;
-  --color-danger: #d93025;
-  --color-primary-hover: #1d4ed8;
-  --font-admin: "Noto Sans JP", system-ui, sans-serif;
-}
-
-/* 管理者画面(/admin)のルートに付与するスコープ。ここでだけ--color-primaryを
-   青系(#2563eb)に上書きし、消費者画面の緑(#12b76a)とは独立させる */
-.admin-theme {
-  --color-primary: #2563eb;
 }
 
 @theme inline {
@@ -46,18 +27,6 @@
   --color-outline-variant: var(--color-outline-variant);
   --font-sans: var(--font-public-sans);
   --font-mono: var(--font-geist-mono);
-
-  --color-surface-alt: var(--color-surface-alt);
-  --color-surface-highlight: var(--color-surface-highlight);
-  --color-text-primary: var(--color-text-primary);
-  --color-text-secondary: var(--color-text-secondary);
-  --color-text-on-primary: var(--color-text-on-primary);
-  --color-border: var(--color-border);
-  --color-danger: var(--color-danger);
-  --color-primary-hover: var(--color-primary-hover);
-  /* スプレッドシート風の統一された小さい角丸 */
-  --radius-admin: 4px;
-  --font-admin: var(--font-admin);
 }
 
 body {
