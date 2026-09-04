@@ -162,7 +162,7 @@ export default function ProductDeletionFlow() {
               type="button"
               onClick={handleDelete}
               disabled={step === "deleting"}
-              className="h-11 flex-1 rounded-full bg-danger text-sm font-bold text-white disabled:opacity-60"
+              className="h-11 flex-1 rounded-full bg-red-600 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
             >
               {step === "deleting" ? "削除中…" : "削除する"}
             </button>

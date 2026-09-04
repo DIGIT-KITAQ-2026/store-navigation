@@ -21,7 +21,7 @@ export function AdminLogoutButton() {
       type="button"
       onClick={() => void handleLogout()}
       disabled={isLoggingOut}
-      className="flex h-9 items-center rounded-admin border border-border bg-surface px-4 text-[13px] font-semibold text-primary transition-colors hover:bg-surface-highlight disabled:opacity-60"
+      className="flex h-9 items-center rounded-full border border-outline-variant bg-surface px-4 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-variant disabled:opacity-60"
     >
       {isLoggingOut ? "ログアウト中…" : "ログアウト"}
     </button>

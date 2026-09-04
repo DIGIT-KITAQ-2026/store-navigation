@@ -3,10 +3,16 @@ import ProductRegistrationFlow from "@/components/features/ProductRegistrationFl
 
 export default function AdminProductsNewPage() {
   return (
-    <div className="flex min-h-dvh flex-1 flex-col bg-surface-alt">
-      <AdminHeader title="商品登録" backHref="/admin" showLogout />
+    <div className="flex flex-1 flex-col">
+      <AdminHeader
+        title="商品登録"
+        subtitle="棚バーコード・商品バーコードのスキャンから登録します"
+        backHref="/admin"
+        active="new"
+        showLogout
+      />
 
-      <main className="flex flex-1 flex-col gap-6 px-4 py-8">
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
         <ProductRegistrationFlow />
       </main>
     </div>
