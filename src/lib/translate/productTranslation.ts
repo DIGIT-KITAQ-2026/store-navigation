@@ -11,8 +11,9 @@ export interface TranslatableProduct {
 }
 
 /**
- * 商品名・説明文・カテゴリをlocaleへ翻訳する。日本語(デフォルトロケール)はそのまま返す。
- * 名前・説明は`product_translations`のキャッシュを優先し、無ければGoogle翻訳APIを呼んで
+ * 商品説明文・カテゴリをlocaleへ翻訳する。日本語(デフォルトロケール)はそのまま返す。
+ * 商品名は翻訳せず、常に元の日本語表示のままにする(店頭の実際の商品名と一致させるため)。
+ * 説明文は`product_translations`のキャッシュを優先し、無ければGoogle翻訳APIを呼んで
  * 結果を保存してから返す。翻訳に失敗した場合は日本語の原文にフォールバックする
  * (検索・商品案内自体は翻訳が無くても機能を止めないため)。
  * カテゴリは種類が固定8種のため、APIを呼ばず静的な対応表(categoryLabels.ts)で変換する。
@@ -32,25 +33,23 @@ export async function translateProduct<T extends TranslatableProduct>(
 
     const { data: cached } = await supabase
       .from("product_translations")
-      .select("name, description")
+      .select("description")
       .eq("product_id", product.id)
       .eq("locale", locale)
       .maybeSingle();
 
     if (cached) {
-      return { ...withTranslatedCategory, name: cached.name, description: cached.description };
+      return { ...withTranslatedCategory, description: cached.description };
     }
 
-    const translated = await translateTexts([product.name, product.description], locale);
-    if (!translated || translated.length < 2) return withTranslatedCategory;
+    const translated = await translateTexts([product.description], locale);
+    if (!translated || translated.length < 1) return withTranslatedCategory;
 
-    const [name, description] = translated;
+    const [description] = translated;
 
-    await supabase
-      .from("product_translations")
-      .upsert({ product_id: product.id, locale, name, description });
+    await supabase.from("product_translations").upsert({ product_id: product.id, locale, description });
 
-    return { ...withTranslatedCategory, name, description };
+    return { ...withTranslatedCategory, description };
   } catch (error) {
     console.error("[productTranslation] 商品の翻訳に失敗しました", error);
     return withTranslatedCategory;

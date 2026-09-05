@@ -39,21 +39,18 @@ export type Database = {
         Row: {
           description: string
           locale: string
-          name: string
           product_id: string
           translated_at: string
         }
         Insert: {
           description: string
           locale: string
-          name: string
           product_id: string
           translated_at?: string
         }
         Update: {
           description?: string
           locale?: string
-          name?: string
           product_id?: string
           translated_at?: string
         }
