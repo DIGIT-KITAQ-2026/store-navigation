@@ -27,6 +27,9 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   // サーバーとクライアントの初回レンダーを一致させるため、ここではsessionStorage/pending画像を参照しない。
   // 復元はマウント後のuseEffect内でのみ行う。
   const [query, setQuery] = useState(initialQuery);
+  // 見出し(「〇〇」の検索結果)に表示する検索語。検索バーの入力中の文字にリアルタイムで
+  // 連動させず、実際に検索が実行された(送信ボタン・音声入力での確定)タイミングでのみ更新する
+  const [submittedQuery, setSubmittedQuery] = useState(initialQuery);
   const [status, setStatus] = useState<SearchStatus>(() =>
     initialQuery.trim().length === 0 ? "empty-query" : "loading"
   );
@@ -134,6 +137,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
       void executeImageSearch(attachedFile);
       return;
     }
+    setSubmittedQuery(query);
     router.replace(`/search?q=${encodeURIComponent(query)}`, { scroll: false });
     runSearch(query);
   };
@@ -141,6 +145,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const handleSelectImage = (file: File) => {
     setAttachedFile(file);
     setQuery("");
+    setSubmittedQuery("");
   };
 
   const handleRemoveAttachedImage = () => setAttachedFile(null);
@@ -148,6 +153,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const handleVoiceResult = (text: string) => {
     setAttachedFile(null);
     setQuery(text);
+    setSubmittedQuery(text);
     router.replace(`/search?q=${encodeURIComponent(text)}`, { scroll: false });
     runSearch(text);
   };
@@ -180,13 +186,13 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
             <span className="material-symbols-outlined text-on-surface-variant">arrow_back</span>
           </Link>
           <h1 className="text-xl font-bold text-on-surface md:text-2xl">
-            {query.trim().length > 0 ? (
+            {submittedQuery.trim().length > 0 ? (
               (() => {
                 const [prefix, suffix] = t.search.resultsHeading.split("{query}");
                 return (
                   <>
                     {prefix}
-                    <span className="text-primary">{query}</span>
+                    <span className="text-primary">{submittedQuery}</span>
                     {suffix}
                   </>
                 );
