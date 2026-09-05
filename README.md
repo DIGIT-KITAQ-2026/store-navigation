@@ -12,7 +12,10 @@
 | フロントエンド/バックエンド | Next.js(このリポジトリ) |
 | データベース | Supabase(テーブル設計確定済み。詳細は[`docs/データベース設計.md`](./docs/データベース設計.md)を参照) |
 | 3Dナビゲーション | Unity WebGLビルドをNext.jsページに埋め込み |
-| AI(商品検索) | `claude`コマンド(Claude Code CLI)をNext.jsのAPI routeからサブプロセス呼び出し。claudeサブスクリプションのログインをそのまま利用し、Anthropic APIキーは使わない |
+| AI(テキスト検索) | CLIP多言語モデル(`@huggingface/transformers`)をサーバー上で実行。外部API・認証は不要 |
+| AI(画像検索) | CLIP(`@huggingface/transformers`)をサーバー上で実行。外部API・認証は不要 |
+| AI(音声入力) | Whisper large-v3-turbo(`@huggingface/transformers`)をサーバー上で実行。外部API・認証は不要 |
+| AI(商品説明の自動生成・管理者用) | `claude`コマンド(Claude Code CLI)のサブプロセス呼び出し |
 | バーコード/QR読取 | ブラウザのカメラAPI |
 
 詳細な機能・画面仕様は [`docs/仕様書.md`](./docs/仕様書.md)、UIのデザインルールは [`DESIGN.md`](./DESIGN.md) を参照。
@@ -21,10 +24,10 @@
 
 `.env.local.example` を `.env.local` にコピーし、`SUPABASE_SERVICE_ROLE_KEY` をSupabaseダッシュボード(Project Settings > API)から取得して設定する(`.env.local` はコミットしないこと)。
 
-商品検索(`/api/search`)は`claude`コマンド(Claude Code CLI)をサーバーから呼び出すため、
-`npm run dev` を実行するマシンで `claude login` を済ませておくこと(このリポジトリを開発している
-Claude Code自身が既にログイン済みなら追加作業は不要)。インタラクティブログインできない環境では
-`.env.local.example` のコメントに従い `CLAUDE_CODE_OAUTH_TOKEN` を設定する。
+商品説明の自動生成(管理者画面)だけは`claude`コマンドを使うため、この機能を使う場合は
+`npm run dev` を実行するマシンで `claude login` を済ませておくこと。インタラクティブログインできない
+環境では `.env.local.example` のコメントに従い `CLAUDE_CODE_OAUTH_TOKEN` を設定する。
+テキスト検索・画像検索・音声入力は追加設定なしで動作する。
 
 開発サーバーを起動する。
 
@@ -34,6 +37,23 @@ npm run dev
 ```
 
 [http://localhost:3000](http://localhost:3000) をブラウザで開くと確認できる。`src/app/page.tsx` を編集すると自動で反映される。
+
+## 検索精度を測る
+
+画像検索・音声検索の精度は評価スクリプトで確認できる。`npm run dev` を起動した状態で実行する。
+
+```bash
+node scripts/eval-image-search.mjs   # 画像 → 商品
+node scripts/eval-voice-search.mjs   # 音声 → 文字起こし → 商品
+```
+
+`scripts/fixtures/` 以下の画像・音声を実際のAPIに投げ、`expected.json` の期待結果と
+突き合わせて正解数を出す。自分で撮った商品写真や録音した音声(16kHz・モノラル・16bitのwav)を
+同じフォルダに置き、`expected.json` に追記すれば評価対象を増やせる。
+評価用の音声はmacOSの`say`コマンドで生成したもので、`scripts/generate-voice-fixtures.sh` で作り直せる。
+
+音声認識は初回リクエストでモデルの読み込みに20秒ほどかかる。アプリからマイクを押したときは、
+話している間に読み込みを先行させるようにしている(`/api/transcribe` へのウォームアップ要求)。
 
 ## はじめに読むもの
 

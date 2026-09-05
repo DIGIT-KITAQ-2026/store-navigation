@@ -1,29 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
-import { useVoiceSearch } from "@/lib/useVoiceSearch";
+import { useVoiceSearch } from "@/lib/voice/useVoiceSearch";
 
 interface VoiceSearchButtonProps {
   onResult: (text: string) => void;
   disabled?: boolean;
   /** エラーメッセージが出たことを呼び出し側にも伝える(検索バー下に表示する等) */
   onError?: (message: string) => void;
-  /** モデル読み込み中の進捗(初回のみ発生)を呼び出し側にも伝える。nullで非表示にする */
-  onLoadProgress?: (progress: number | null) => void;
 }
 
 /**
  * 検索欄の中に置くマイクボタン。タップで録音開始、もう一度タップで録音終了→
- * ブラウザ内で動くWhisperで文字起こしし、結果が出るとonResultを呼ぶ。
+ * サーバー側のWhisperで文字起こしし、結果が出るとonResultを呼ぶ。
  * getUserMedia/MediaRecorderに対応していない場合は何も描画しない(段階的機能強化)。
  */
-export default function VoiceSearchButton({
-  onResult,
-  disabled,
-  onError,
-  onLoadProgress,
-}: VoiceSearchButtonProps) {
-  const { isSupported, isListening, isTranscribing, loadProgress, error, startListening, stopListening } =
+export default function VoiceSearchButton({ onResult, disabled, onError }: VoiceSearchButtonProps) {
+  const { isSupported, isListening, isTranscribing, error, startListening, stopListening } =
     useVoiceSearch((text) => {
       onResult(text);
     });
@@ -32,11 +25,6 @@ export default function VoiceSearchButton({
     if (error) onError?.(error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error]);
-
-  useEffect(() => {
-    onLoadProgress?.(loadProgress);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadProgress]);
 
   if (!isSupported) return null;
 

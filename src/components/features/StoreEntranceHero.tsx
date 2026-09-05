@@ -20,7 +20,6 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
   const [query, setQuery] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [voiceLoadProgress, setVoiceLoadProgress] = useState<number | null>(null);
   const rootRef = useRef<HTMLElement>(null);
   const cardInnerRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
@@ -250,7 +249,6 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
                 <VoiceSearchButton
                   onResult={handleVoiceResult}
                   onError={setVoiceError}
-                  onLoadProgress={setVoiceLoadProgress}
                 />
               </div>
               <button
@@ -264,12 +262,6 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
 
             {showAttachedChip && (
               <p className="-mt-3 text-xs text-on-surface-variant">送信ボタンを押すと画像で検索します</p>
-            )}
-
-            {voiceLoadProgress !== null && (
-              <p role="status" className="-mt-3 text-xs text-on-surface-variant">
-                音声認識モデルを準備中です…(初回のみ、{Math.round(voiceLoadProgress)}%)
-              </p>
             )}
 
             {voiceError && (

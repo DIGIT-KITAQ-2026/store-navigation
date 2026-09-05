@@ -1,5 +1,6 @@
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
-import { searchProductsWithClaude, type ClaudeSearchMatch } from "@/lib/aiSearch/searchProductsWithClaude";
+import type { ClaudeSearchMatch } from "@/lib/aiSearch/searchProductsWithClaude";
+import { searchProductsWithClip } from "@/lib/aiSearch/searchProductsWithClip";
 import { fallbackSearch } from "@/lib/aiSearch/fallbackSearch";
 import { fetchStoreCatalog, mapMatchesToResults } from "@/lib/aiSearch/catalog";
 import type { SearchResultItem } from "@/types/product";
@@ -29,9 +30,9 @@ export async function POST(request: Request) {
   let matches: ClaudeSearchMatch[];
   let usedFallback = false;
   try {
-    matches = await searchProductsWithClaude(query, catalog);
+    matches = await searchProductsWithClip(query, catalog);
   } catch (error) {
-    console.error("[api/search] claude CLIによるAI検索に失敗したため、通常検索にフォールバックします", error);
+    console.error("[api/search] CLIPによるAI検索に失敗したため、通常検索にフォールバックします", error);
     matches = fallbackSearch(query, catalog);
     usedFallback = true;
   }

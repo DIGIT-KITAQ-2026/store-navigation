@@ -30,7 +30,6 @@ export default function SearchBar({
   onVoiceResult,
 }: SearchBarProps) {
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [voiceLoadProgress, setVoiceLoadProgress] = useState<number | null>(null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -80,7 +79,6 @@ export default function SearchBar({
             onResult={handleVoiceResult}
             disabled={isImageSearching}
             onError={setVoiceError}
-            onLoadProgress={setVoiceLoadProgress}
           />
         </div>
         <button
@@ -91,12 +89,6 @@ export default function SearchBar({
           <span className="material-symbols-outlined text-[20px]">send</span>
         </button>
       </form>
-
-      {voiceLoadProgress !== null && (
-        <p role="status" className="mt-2 text-center text-xs text-on-surface-variant">
-          音声認識モデルを準備中です…(初回のみ、{Math.round(voiceLoadProgress)}%)
-        </p>
-      )}
 
       {voiceError && (
         <p role="alert" className="mt-2 text-center text-xs text-red-600">

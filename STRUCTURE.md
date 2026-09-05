@@ -52,6 +52,8 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
   当初`src/lib/claude/`にAgent SDK(OAuth認証)経由の実装を置く想定だったが、利用ポリシー上の
   制約で方式変更したため`aiSearch/`に置き直している(`docs/仕様書.md`の「AI連携仕様」参照)。
   `src/lib/claude/`は未使用の空フォルダなので新規実装をここに置かないこと
+- `src/lib/voice/` — 音声入力。ブラウザ側の録音・PCM変換(`useVoiceSearch.ts`)と、
+  サーバー側でWhisperを動かす文字起こし(`transcribeAudio.ts`)。APIルートは`src/app/api/transcribe/`
 - `src/lib/unityBridge.ts` — Unity WebGL(iframe)へのpostMessage送信ヘルパー
 - `src/lib/barcode/` — カメラでのバーコード/QR読み取りの共通処理
 - `src/lib/store-navigation/` — `store-3d/`向けの型・店内レイアウト(ナビゲーショングラフ)・
