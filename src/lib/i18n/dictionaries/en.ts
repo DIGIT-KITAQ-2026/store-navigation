@@ -18,7 +18,6 @@ const en: Dictionary = {
     closeCard: "Close search card",
     searchPlaceholder: "Enter a product name or what you need",
     imageSearchHint: "Press send to search by image",
-    voiceLoadProgress: "Preparing the speech recognition model… (first time only, {percent}%)",
     headingLine1: "Shop with",
     headingLine2: "confidence",
     subDescription: "Enter a product name or goal and we'll guide you there in 3D",

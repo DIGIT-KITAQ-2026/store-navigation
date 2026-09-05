@@ -18,7 +18,6 @@ const ko: Dictionary = {
     closeCard: "검색 카드 닫기",
     searchPlaceholder: "상품명이나 찾으시는 것을 입력하세요",
     imageSearchHint: "전송 버튼을 누르면 이미지로 검색합니다",
-    voiceLoadProgress: "음성 인식 모델을 준비하고 있습니다…(최초 1회만, {percent}%)",
     headingLine1: "헤매지 않는",
     headingLine2: "쇼핑",
     subDescription: "상품명이나 목적을 입력하면 매장까지 3D로 안내해 드립니다",

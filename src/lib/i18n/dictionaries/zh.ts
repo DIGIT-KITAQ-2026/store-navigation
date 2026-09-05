@@ -18,7 +18,6 @@ const zh: Dictionary = {
     closeCard: "关闭搜索框",
     searchPlaceholder: "请输入商品名称或想找的东西",
     imageSearchHint: "点击发送按钮以图片搜索",
-    voiceLoadProgress: "正在准备语音识别模型…(仅首次，{percent}%)",
     headingLine1: "轻松购物",
     headingLine2: "不再迷路",
     subDescription: "输入商品名称或目的，即可以3D方式为您导航到货架",

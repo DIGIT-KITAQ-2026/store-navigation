@@ -8,7 +8,7 @@ import ImageSearchButton from "@/components/ui/ImageSearchButton";
 import AttachedImageChip from "@/components/ui/AttachedImageChip";
 import VoiceSearchButton from "@/components/ui/VoiceSearchButton";
 import { IMAGE_SEARCH_QUERY_LABEL, setPendingImageSearchFile } from "@/lib/pendingImageSearch";
-import { useTranslations, format } from "@/lib/i18n/useTranslations";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 
 type StoreEntranceHeroProps = {
   storeName: string;
@@ -21,7 +21,6 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
   const [query, setQuery] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [voiceLoadProgress, setVoiceLoadProgress] = useState<number | null>(null);
   const rootRef = useRef<HTMLElement>(null);
   const cardInnerRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
@@ -261,7 +260,6 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
                 <VoiceSearchButton
                   onResult={handleVoiceResult}
                   onError={setVoiceError}
-                  onLoadProgress={setVoiceLoadProgress}
                 />
               </div>
               <button
@@ -275,12 +273,6 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
 
             {showAttachedChip && (
               <p className="-mt-3 text-xs text-on-surface-variant">{t.hero.imageSearchHint}</p>
-            )}
-
-            {voiceLoadProgress !== null && (
-              <p role="status" className="-mt-3 text-xs text-on-surface-variant">
-                {format(t.hero.voiceLoadProgress, { percent: Math.round(voiceLoadProgress) })}
-              </p>
             )}
 
             {voiceError && (

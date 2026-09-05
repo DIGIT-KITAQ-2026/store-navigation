@@ -19,7 +19,6 @@ export interface Dictionary {
     closeCard: string;
     searchPlaceholder: string;
     imageSearchHint: string;
-    voiceLoadProgress: string;
     headingLine1: string;
     headingLine2: string;
     subDescription: string;
@@ -115,7 +114,6 @@ const ja: Dictionary = {
     closeCard: "検索カードを閉じる",
     searchPlaceholder: "商品名や欲しいものを入力",
     imageSearchHint: "送信ボタンを押すと画像で検索します",
-    voiceLoadProgress: "音声認識モデルを準備中です…(初回のみ、{percent}%)",
     headingLine1: "迷わない",
     headingLine2: "お買い物へ",
     subDescription: "商品名や目的を入力すると、売り場まで3Dでご案内します",

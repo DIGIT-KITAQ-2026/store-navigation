@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import ImageSearchButton from "@/components/ui/ImageSearchButton";
 import AttachedImageChip from "@/components/ui/AttachedImageChip";
 import VoiceSearchButton from "@/components/ui/VoiceSearchButton";
-import { useTranslations, format } from "@/lib/i18n/useTranslations";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 
 interface SearchBarProps {
   value: string;
@@ -32,7 +32,6 @@ export default function SearchBar({
 }: SearchBarProps) {
   const t = useTranslations();
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [voiceLoadProgress, setVoiceLoadProgress] = useState<number | null>(null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -82,7 +81,6 @@ export default function SearchBar({
             onResult={handleVoiceResult}
             disabled={isImageSearching}
             onError={setVoiceError}
-            onLoadProgress={setVoiceLoadProgress}
           />
         </div>
         <button
@@ -93,12 +91,6 @@ export default function SearchBar({
           <span className="material-symbols-outlined text-[20px]">send</span>
         </button>
       </form>
-
-      {voiceLoadProgress !== null && (
-        <p role="status" className="mt-2 text-center text-xs text-on-surface-variant">
-          {format(t.hero.voiceLoadProgress, { percent: Math.round(voiceLoadProgress) })}
-        </p>
-      )}
 
       {voiceError && (
         <p role="alert" className="mt-2 text-center text-xs text-red-600">

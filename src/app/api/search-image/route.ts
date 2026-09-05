@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
-import { searchProductsWithClaudeVision } from "@/lib/aiSearch/searchProductsWithClaudeVision";
+import { searchProductsWithClipVision } from "@/lib/aiSearch/searchProductsWithClipVision";
+import type { ClaudeSearchMatch } from "@/lib/aiSearch/searchProductsWithClaude";
 import { fetchStoreCatalog, mapMatchesToResults } from "@/lib/aiSearch/catalog";
 import { translateProducts } from "@/lib/translate/productTranslation";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isLocale } from "@/lib/i18n/locales";
@@ -52,20 +53,23 @@ export async function POST(request: Request) {
 
   const imageBuffer = Buffer.from(await image.arrayBuffer());
 
+  let matches: ClaudeSearchMatch[];
   try {
-    const matches = await searchProductsWithClaudeVision(imageBuffer, extension, catalog, locale);
-    const results: SearchResultItem[] = mapMatchesToResults(matches, catalog, locationCodeByProductId);
-    const translatedProducts = await translateProducts(
-      results.map((result) => result.product),
-      locale
-    );
-    const translatedResults: SearchResultItem[] = results.map((result, index) => ({
-      ...result,
-      product: translatedProducts[index],
-    }));
-    return Response.json({ results: translatedResults });
+    matches = await searchProductsWithClipVision(imageBuffer, catalog, locale);
   } catch (error) {
-    console.error("[api/search-image] claude CLIによる画像検索に失敗しました", error);
+    console.error("[api/search-image] 画像検索に失敗しました", error);
     return Response.json({ error: "画像検索に失敗しました。テキストで検索してください。" }, { status: 502 });
   }
+
+  const results: SearchResultItem[] = mapMatchesToResults(matches, catalog, locationCodeByProductId);
+  const translatedProducts = await translateProducts(
+    results.map((result) => result.product),
+    locale
+  );
+  const translatedResults: SearchResultItem[] = results.map((result, index) => ({
+    ...result,
+    product: translatedProducts[index],
+  }));
+
+  return Response.json({ results: translatedResults, usedFallback: false });
 }

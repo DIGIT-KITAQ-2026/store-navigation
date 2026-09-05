@@ -38,6 +38,14 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  // React Strict Mode(開発時)はマウント時のエフェクトを2回実行する。以下2点への対処:
+  //  1. takePendingImageSearchFile()は取り出すとクリアされるため、2回目はnullになり
+  //     テキスト検索(検索語は"画像検索")に流れて画像検索の結果を上書きしてしまう。
+  //     → 取り出した値をrefに保持し、2回目も同じ値を見るようにする。
+  //  2. 画像検索はAPIを消費するため2回実行したくない。→ 実行済みフラグで1度きりにする。
+  //     (テキスト検索は1回目がクリーンアップでabortされるので、2回目に実行させる必要がある)
+  const pendingFileRef = useRef<File | null | undefined>(undefined);
+  const imageSearchStartedRef = useRef(false);
   const { error: imageSearchError, search: searchByImage } = useImageSearch();
 
   // fetch実行のみを行い、setStateは非同期コールバック内でのみ呼ぶ(エフェクト内からの直接呼び出しを許容するため)
@@ -107,13 +115,18 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   };
 
   useEffect(() => {
-    const pendingFile = takePendingImageSearchFile();
+    if (pendingFileRef.current === undefined) {
+      pendingFileRef.current = takePendingImageSearchFile();
+    }
+    const pendingFile = pendingFileRef.current;
 
     if (pendingFile) {
       // ホーム画面から画像検索として遷移してきた場合。この画面側で改めて検索を実行する
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAttachedFile(pendingFile);
-      void executeImageSearch(pendingFile);
+      if (!imageSearchStartedRef.current) {
+        imageSearchStartedRef.current = true;
+        void executeImageSearch(pendingFile);
+      }
     } else if (initialQuery.trim().length > 0) {
       const cached = readCachedResults(initialQuery, locale);
       if (cached) {

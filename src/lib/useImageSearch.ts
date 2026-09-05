@@ -25,14 +25,14 @@ export function useImageSearch() {
       formData.append("image", file);
 
       const response = await fetch("/api/search-image", { method: "POST", body: formData });
-      const data: { results?: SearchResultItem[]; error?: string } = await response.json();
+      const data: { results?: SearchResultItem[]; error?: string; usedFallback?: boolean } = await response.json();
 
       if (!response.ok) {
         setError(data.error ?? "画像検索に失敗しました");
         return null;
       }
 
-      return { results: data.results ?? [], usedFallback: false };
+      return { results: data.results ?? [], usedFallback: data.usedFallback ?? false };
     } catch {
       setError("画像検索に失敗しました。通信状況を確認してください。");
       return null;
