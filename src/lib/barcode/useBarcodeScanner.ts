@@ -15,6 +15,13 @@ const SUPPORTED_FORMATS = [
   Html5QrcodeSupportedFormats.QR_CODE,
 ];
 
+// 前のステップで読み取ったバーコードがカメラの画角に残ったまま次のスキャン画面へ
+// 遷移すると、起動直後の数フレームで同じバーコードを即座に再検出してしまう
+// (例: 棚バーコードをスキャンした直後、商品バーコード読み取り画面に切り替わった瞬間に
+// 同じ棚バーコードを商品バーコードとして誤検出する)。start()完了からこの時間内の
+// 検出は無視し、対象を持ち替える・カメラを構え直すための猶予を設ける。
+const SCAN_WARMUP_MS = 2000;
+
 // EAN-13等の1次元バーコードは横長の帯なので、正方形のqrboxだと読み取り枠内に
 // バーコード全体が収まりにくい。ビューファインダー幅に対して横長の枠を返す。
 function calculateScanBox(viewfinderWidth: number, viewfinderHeight: number): QrDimensions {
@@ -53,6 +60,8 @@ export function useBarcodeScanner(elementId: string, { onDetected }: UseBarcodeS
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const generationRef = useRef(0);
   const onDetectedRef = useRef(onDetected);
+  // start()完了時にDate.now() + SCAN_WARMUP_MSをセットし、これより前の検出は無視する
+  const readyAtRef = useRef(0);
 
   useEffect(() => {
     onDetectedRef.current = onDetected;
@@ -107,7 +116,10 @@ export function useBarcodeScanner(elementId: string, { onDetected }: UseBarcodeS
             advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
           },
         },
-        (decodedText) => onDetectedRef.current(decodedText),
+        (decodedText) => {
+          if (Date.now() < readyAtRef.current) return;
+          onDetectedRef.current(decodedText);
+        },
         () => {
           // フレームごとの未検出コールバック。頻繁に呼ばれるため無視する。
         }
@@ -121,6 +133,7 @@ export function useBarcodeScanner(elementId: string, { onDetected }: UseBarcodeS
       }
 
       scannerRef.current = scanner;
+      readyAtRef.current = Date.now() + SCAN_WARMUP_MS;
       setIsScanning(true);
 
       // 暗い場所での読み取り失敗が多いため、対応端末ではライト(トーチ)を操作できるようにする
