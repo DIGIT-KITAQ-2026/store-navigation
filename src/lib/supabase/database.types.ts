@@ -35,6 +35,38 @@ export type Database = {
         }
         Relationships: []
       }
+      product_translations: {
+        Row: {
+          description: string
+          locale: string
+          name: string
+          product_id: string
+          translated_at: string
+        }
+        Insert: {
+          description: string
+          locale: string
+          name: string
+          product_id: string
+          translated_at?: string
+        }
+        Update: {
+          description?: string
+          locale?: string
+          name?: string
+          product_id?: string
+          translated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_translations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           barcode: string

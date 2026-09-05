@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import type { SearchResultItem } from "@/types/product";
+import { useTranslations, format } from "@/lib/i18n/useTranslations";
 
 interface ProductCardProps {
   item: SearchResultItem;
@@ -7,11 +10,12 @@ interface ProductCardProps {
 
 export default function ProductCard({ item }: ProductCardProps) {
   const { product, matchReason } = item;
+  const t = useTranslations();
 
   return (
     <Link
       href={`/navigate/${product.id}`}
-      aria-label={`${product.name}の場所を見る`}
+      aria-label={format(t.productCard.placeAriaLabel, { name: product.name })}
       className="group relative flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-5 shadow-sm transition-all hover:border-primary hover:shadow-md md:p-7"
     >
       {product.category && (
@@ -30,12 +34,14 @@ export default function ProductCard({ item }: ProductCardProps) {
 
       <div className="mt-1 flex items-center gap-2 rounded-lg bg-primary-container/30 p-3">
         <span className="material-symbols-outlined text-[18px] text-primary">location_on</span>
-        <p className="text-sm font-semibold text-primary">棚 {product.shelfNumber}</p>
+        <p className="text-sm font-semibold text-primary">
+          {format(t.productCard.shelf, { number: product.shelfNumber ?? "" })}
+        </p>
       </div>
 
       <span className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-full bg-primary py-3 text-sm font-semibold text-on-primary transition-colors group-hover:bg-primary/90 group-active:scale-[0.98] md:rounded-lg">
         <span className="material-symbols-outlined text-[18px]">map</span>
-        場所を見る
+        {t.productCard.viewLocation}
       </span>
     </Link>
   );
