@@ -20,9 +20,9 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
 |---|---|---|
 | 店舗トップ画面(QR読み取り後) | `src/app/(consumer)/page.tsx` | `/` |
 | AI検索結果画面(商品/マップ/リストタブ) | `src/app/(consumer)/search/page.tsx` | `/search` |
-| Unity WebGLナビゲーション画面 | `src/app/(consumer)/navigate/[productId]/page.tsx` | `/navigate/:productId` |
+| 3D店内ナビゲーション画面(Three.js/React Three Fiber) | `src/app/(consumer)/navigate/[productId]/page.tsx` | `/navigate/:productId` |
 | ↑の商品が見つからない場合の表示 | `src/app/(consumer)/navigate/[productId]/not-found.tsx` | (同上、`notFound()`呼び出し時) |
-| ブラウザネイティブ3D店内ナビゲーションのデモ画面(Three.js/React Three Fiber。Unity WebGL版`/navigate/[productId]`とは別実装) | `src/app/store-3d-demo/page.tsx` | `/store-3d-demo` |
+| ブラウザネイティブ3D店内ナビゲーションのデモ画面(Three.js/React Three Fiber。`store-3d/`配下のコンポーネントを`/navigate/[productId]`と共用) | `src/app/store-3d-demo/page.tsx` | `/store-3d-demo` |
 | 管理者ログイン画面 | `src/app/admin/login/page.tsx` | `/admin/login` |
 | 店舗管理画面(登録/削除/一覧への導線) | `src/app/admin/page.tsx` | `/admin` |
 | 商品登録画面 | `src/app/admin/products/new/page.tsx` | `/admin/products/new` |
@@ -37,10 +37,10 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
 - `src/components/ui/` — DESIGN.mdのトークンに沿った共通部品(検索バー、ボトムシート、
   pillボタン、フローティングアクションボタン、リストアイテムなど)。**特定の画面に依存しない見た目だけの部品**
 - `src/components/features/` — 特定の機能に紐づくコンポーネント(商品検索フォーム、
-  バーコード/QRスキャナー、Unity WebGLビューア、商品登録フォームなど)。`ui/` の部品を組み合わせて作る
+  バーコード/QRスキャナー、商品登録フォームなど)。`ui/` の部品を組み合わせて作る
 - `src/components/store-3d/` — ブラウザネイティブ3D店内ナビゲーション(Three.js / React Three Fiber)
-  専用のコンポーネント群(`/store-3d-demo`用)。既存のUnity WebGL版(`UnityViewer`)とは独立しており、
-  互いに依存しない
+  専用のコンポーネント群。`/store-3d-demo`と`/navigate/[productId]`(`NavigateScreen`経由)の
+  両方から利用する
 
 迷ったら「他の画面でも使い回せそうか」で判断する。使い回せそうなら `ui/`、その画面専用なら `features/`。
 
@@ -54,15 +54,15 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
   `src/lib/claude/`は未使用の空フォルダなので新規実装をここに置かないこと
 - `src/lib/voice/` — 音声入力。ブラウザ側の録音・PCM変換(`useVoiceSearch.ts`)と、
   サーバー側でWhisperを動かす文字起こし(`transcribeAudio.ts`)。APIルートは`src/app/api/transcribe/`
-- `src/lib/unityBridge.ts` — Unity WebGL(iframe)へのpostMessage送信ヘルパー
 - `src/lib/barcode/` — カメラでのバーコード/QR読み取りの共通処理
 - `src/lib/store-navigation/` — `store-3d/`向けの型・店内レイアウト(ナビゲーショングラフ)・
   経路探索(BFS)のみを持つ。Three.js/3D描画のコードはここには置かない(経路計算と3D描画の分離)
 
-## Unity WebGL
+## (過去経緯)Unity WebGL版について
 
-Unityでビルドした成果物一式は `public/unity/` に配置し、`src/components/features/UnityViewer.tsx`
-から `<iframe>` で読み込む。棚IDの送信は`src/lib/unityBridge.ts`の`postStartGuideMessage`を使う。
+初期はUnityでビルドしたWebGL成果物を`public/unity/`に配置し、`UnityViewer.tsx`から`<iframe>`で
+読み込む方式を検討していたが、React Three Fiber版(`src/components/store-3d/`)への一本化に伴い
+未使用となったため削除済み。現在3Dナビゲーションを実装する場合は`src/components/store-3d/`配下を使う。
 
 ## 開発を始めるときの手順
 

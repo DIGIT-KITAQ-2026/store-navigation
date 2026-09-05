@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 import type { Product } from "@/types/product";
+import { translateProduct } from "@/lib/translate/productTranslation";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 
 /**
  * サーバーサイド専用のSupabaseクライアント。RLSをバイパスするService Role Keyを使うため、
@@ -26,7 +28,10 @@ export function createSupabaseServiceClient() {
  * nullable(棚バーコードでの登録前の商品が存在し得る)なため、棚が未設定の場合はnullにはせず
  * shelfId/shelfNumberがnullのProductを返す(呼び出し側で「準備中」表示に出し分けるため)
  */
-export async function getProductWithShelfLocation(productId: string): Promise<Product | null> {
+export async function getProductWithShelfLocation(
+  productId: string,
+  locale: Locale = DEFAULT_LOCALE
+): Promise<Product | null> {
   const supabase = createSupabaseServiceClient();
 
   const { data, error } = await supabase
@@ -39,7 +44,7 @@ export async function getProductWithShelfLocation(productId: string): Promise<Pr
 
   const locationCode = data.shelves?.shelf_locations?.location_code ?? null;
 
-  return {
+  const product: Product = {
     id: data.id,
     name: data.name,
     category: data.category ?? "",
@@ -47,6 +52,8 @@ export async function getProductWithShelfLocation(productId: string): Promise<Pr
     shelfNumber: locationCode ? locationCode.replace(/^Shelf_/, "") : null,
     description: data.description ?? "",
   };
+
+  return translateProduct(product, locale);
 }
 
 export interface AdminProductListItem {

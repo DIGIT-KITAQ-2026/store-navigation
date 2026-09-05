@@ -15,11 +15,15 @@ interface BoxDescriptor {
   size: [number, number, number];
 }
 
+interface StoreEnvironmentProps {
+  entranceLabel: string;
+}
+
 /**
  * 店舗の床・外周壁・入口・天井照明パネルを配置する。すべて標準Geometry(Box/Plane/Circle)のみで
  * 構成し、外部アセットは使用しない。壁・パネルは1つのunit BoxGeometryをscaleで使い回す
  */
-export default function StoreEnvironment() {
+export default function StoreEnvironment({ entranceLabel }: StoreEnvironmentProps) {
   const floorWidth = STORE_FLOOR.maxX - STORE_FLOOR.minX;
   const floorDepth = STORE_FLOOR.maxZ - STORE_FLOOR.minZ;
   const centerX = (STORE_FLOOR.minX + STORE_FLOOR.maxX) / 2;
@@ -125,7 +129,7 @@ export default function StoreEnvironment() {
 
       <Html position={[0, 2.2, 1]} center pointerEvents="none">
         <div className="whitespace-nowrap rounded-full border border-teal-500/40 bg-white/95 px-3 py-1 text-xs font-bold text-teal-700 shadow-sm">
-          入口
+          {entranceLabel}
         </div>
       </Html>
     </group>

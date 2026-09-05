@@ -3,6 +3,8 @@ import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude"
 import { getImageClassifier } from "./clip/models";
 import { IMAGE_LABELS } from "./clip/imageLabels";
 import { searchProductsWithClip } from "./searchProductsWithClip";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { buildSearchReason } from "./searchReasons";
 
 /** 上位ラベルのスコアがこれ未満の場合は「何が写っているか判断できない」とみなす */
 const MIN_LABEL_SCORE = 0.2;
@@ -25,7 +27,8 @@ const MAX_RESULTS = 5;
  */
 export async function searchProductsWithClipVision(
   imageBuffer: Buffer,
-  catalog: CatalogItem[]
+  catalog: CatalogItem[],
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ClaudeSearchMatch[]> {
   if (catalog.length === 0) return [];
 
@@ -53,12 +56,12 @@ export async function searchProductsWithClipVision(
     const query = queryByLabel.get(prediction.label);
     if (!query) continue;
 
-    for (const match of await searchProductsWithClip(query, catalog)) {
+    for (const match of await searchProductsWithClip(query, catalog, locale)) {
       if (seenProductIds.has(match.productId)) continue;
       seenProductIds.add(match.productId);
       matches.push({
         productId: match.productId,
-        reason: `画像から「${query.split(" ")[0]}」と判定し、該当する商品が見つかりました`,
+        reason: buildSearchReason("image", { label: query.split(" ")[0] }, locale),
       });
       if (matches.length >= MAX_RESULTS) return matches;
     }

@@ -1,8 +1,11 @@
+import { cookies } from "next/headers";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import type { ClaudeSearchMatch } from "@/lib/aiSearch/searchProductsWithClaude";
 import { searchProductsWithClip } from "@/lib/aiSearch/searchProductsWithClip";
 import { fallbackSearch } from "@/lib/aiSearch/fallbackSearch";
 import { fetchStoreCatalog, mapMatchesToResults } from "@/lib/aiSearch/catalog";
+import { translateProducts } from "@/lib/translate/productTranslation";
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isLocale } from "@/lib/i18n/locales";
 import type { SearchResultItem } from "@/types/product";
 
 export async function POST(request: Request) {
@@ -12,6 +15,10 @@ export async function POST(request: Request) {
   if (query.length === 0) {
     return Response.json({ results: [] satisfies SearchResultItem[] });
   }
+
+  const cookieStore = await cookies();
+  const localeCookie = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
+  const locale = isLocale(localeCookie) ? localeCookie : DEFAULT_LOCALE;
 
   let supabase;
   try {
@@ -30,14 +37,22 @@ export async function POST(request: Request) {
   let matches: ClaudeSearchMatch[];
   let usedFallback = false;
   try {
-    matches = await searchProductsWithClip(query, catalog);
+    matches = await searchProductsWithClip(query, catalog, locale);
   } catch (error) {
     console.error("[api/search] CLIPによるAI検索に失敗したため、通常検索にフォールバックします", error);
-    matches = fallbackSearch(query, catalog);
+    matches = fallbackSearch(query, catalog, locale);
     usedFallback = true;
   }
 
   const results: SearchResultItem[] = mapMatchesToResults(matches, catalog, locationCodeByProductId);
+  const translatedProducts = await translateProducts(
+    results.map((result) => result.product),
+    locale
+  );
+  const translatedResults: SearchResultItem[] = results.map((result, index) => ({
+    ...result,
+    product: translatedProducts[index],
+  }));
 
-  return Response.json({ results, usedFallback });
+  return Response.json({ results: translatedResults, usedFallback });
 }

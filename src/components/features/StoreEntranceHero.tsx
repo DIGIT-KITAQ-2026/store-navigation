@@ -1,21 +1,22 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import SearchSuggestions from "@/components/ui/SearchSuggestions";
 import ImageSearchButton from "@/components/ui/ImageSearchButton";
 import AttachedImageChip from "@/components/ui/AttachedImageChip";
 import VoiceSearchButton from "@/components/ui/VoiceSearchButton";
 import { IMAGE_SEARCH_QUERY_LABEL, setPendingImageSearchFile } from "@/lib/pendingImageSearch";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 
 type StoreEntranceHeroProps = {
   storeName: string;
-  suggestions: string[];
 };
 
-export default function StoreEntranceHero({ storeName, suggestions }: StoreEntranceHeroProps) {
+export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -24,6 +25,12 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
   const cardInnerRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchStartAtTopRef = useRef(false);
+
+  const suggestions = useMemo(
+    () => [t.hero.suggestion1, t.hero.suggestion2, t.hero.suggestion3, t.hero.suggestion4],
+    [t]
+  );
+  const [descriptionLine1, descriptionLine2] = t.hero.description.split("\n");
 
   const openCard = () => setIsOpen(true);
   const toggleCard = () => setIsOpen((value) => !value);
@@ -158,22 +165,26 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
               <span className="store-hero-title-line store-hero-title-line-2">Navi</span>
             </h1>
             <p className="store-hero-subcopy-wrap font-bold">
-              <span className="store-hero-subcopy-text">もう、売り場で迷わない。</span>
+              <span className="store-hero-subcopy-text">{t.hero.tagline}</span>
             </p>
             <p className="store-hero-desc leading-relaxed">
-              商品を検索すると、<br className="md:hidden" />売り場まで3Dでご案内します。
+              {descriptionLine1}
+              {/* mdでは改行を挟まず1文として続けて読めるように、間に半角スペースを入れる */}
+              <span className="hidden md:inline"> </span>
+              <br className="md:hidden" />
+              {descriptionLine2}
             </p>
           </div>
 
           <button
             type="button"
             onClick={openCard}
-            aria-label="商品を探す(検索カードを開く)"
+            aria-label={t.hero.openCard}
             aria-hidden={isOpen}
             tabIndex={isOpen ? -1 : undefined}
             className="store-hero-cta group pointer-events-auto flex flex-col items-center gap-2 rounded-lg px-2 py-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/40"
           >
-            <span className="text-sm font-semibold tracking-wide md:text-base">商品を探す</span>
+            <span className="text-sm font-semibold tracking-wide md:text-base">{t.hero.searchButton}</span>
             <span className="store-hero-cta-ring flex h-11 w-11 items-center justify-center rounded-full border border-white/70 transition-colors group-hover:border-[var(--color-hero-mint)]">
               <span
                 aria-hidden="true"
@@ -200,7 +211,7 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
           <button
             type="button"
             onClick={toggleCard}
-            aria-label={isOpen ? "検索カードを閉じる" : "検索カードを開く"}
+            aria-label={isOpen ? t.hero.closeCard : t.hero.openCard}
             aria-expanded={isOpen}
             className="store-search-handle-btn"
           >
@@ -217,7 +228,7 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
               suppressHydrationWarning
             >
               <label htmlFor="product-search-input" className="sr-only">
-                商品名や欲しいものを入力
+                {t.hero.searchPlaceholder}
               </label>
 
               <ImageSearchButton onSelectFile={handleImageSelected} isSearching={false} />
@@ -235,8 +246,8 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
                 autoComplete="off"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={showAttachedChip ? "" : "商品名や欲しいものを入力"}
-                aria-label="商品名や欲しいものを入力"
+                placeholder={showAttachedChip ? "" : t.hero.searchPlaceholder}
+                aria-label={t.hero.searchPlaceholder}
                 className={`h-14 w-full rounded-full border border-outline-variant bg-surface pl-20 pr-24 text-base text-on-surface shadow-[0_10px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.7)] placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 md:shadow-[0_14px_36px_rgba(0,0,0,0.14),0_2px_10px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] ${showAttachedChip ? "text-transparent caret-transparent" : ""}`}
                 suppressHydrationWarning
               />
@@ -253,7 +264,7 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
               </div>
               <button
                 type="submit"
-                aria-label="AI検索"
+                aria-label={t.hero.aiSearch}
                 className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_4px_16px_rgba(18,183,106,0.35)] transition-[transform,box-shadow,background-color] duration-200 ease-out hover:-translate-y-[calc(50%+2px)] hover:scale-110 hover:bg-primary/90 hover:shadow-[0_8px_24px_rgba(18,183,106,0.45)] active:scale-[0.98] active:shadow-[0_2px_8px_rgba(18,183,106,0.3)] focus:outline-none focus:ring-2 focus:ring-primary/40 motion-reduce:transition-none motion-reduce:hover:-translate-y-1/2 motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
               >
                 <span className="material-symbols-outlined text-[20px]">send</span>
@@ -261,7 +272,7 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
             </form>
 
             {showAttachedChip && (
-              <p className="-mt-3 text-xs text-on-surface-variant">送信ボタンを押すと画像で検索します</p>
+              <p className="-mt-3 text-xs text-on-surface-variant">{t.hero.imageSearchHint}</p>
             )}
 
             {voiceError && (
@@ -277,12 +288,10 @@ export default function StoreEntranceHero({ storeName, suggestions }: StoreEntra
               >
                 <span className="material-symbols-outlined text-[20px] text-primary">manage_search</span>
               </span>
-              <span>迷わない</span>
-              <span className="text-primary">お買い物へ</span>
+              <span>{t.hero.headingLine1}</span>
+              <span className="text-primary">{t.hero.headingLine2}</span>
             </h2>
-            <p className="mt-1 text-xs text-on-surface-variant md:text-base">
-              商品名や目的を入力すると、売り場まで3Dでご案内します
-            </p>
+            <p className="mt-1 text-xs text-on-surface-variant md:text-base">{t.hero.subDescription}</p>
             <div className="w-full pb-[max(2rem,env(safe-area-inset-bottom))]">
               <SearchSuggestions suggestions={suggestions} />
             </div>

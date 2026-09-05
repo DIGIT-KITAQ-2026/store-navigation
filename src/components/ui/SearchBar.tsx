@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import ImageSearchButton from "@/components/ui/ImageSearchButton";
 import AttachedImageChip from "@/components/ui/AttachedImageChip";
 import VoiceSearchButton from "@/components/ui/VoiceSearchButton";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 
 interface SearchBarProps {
   value: string;
@@ -29,6 +30,7 @@ export default function SearchBar({
   isImageSearching,
   onVoiceResult,
 }: SearchBarProps) {
+  const t = useTranslations();
   const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -47,7 +49,7 @@ export default function SearchBar({
     <div className="w-full">
       <form onSubmit={handleSubmit} role="search" className="relative w-full" suppressHydrationWarning>
         <label htmlFor="product-search-input" className="sr-only">
-          商品名や目的で検索
+          {t.search.searchAgainPlaceholder}
         </label>
         <ImageSearchButton onSelectFile={onSelectImage} isSearching={isImageSearching} menuPosition={imageMenuPosition} />
         {!showAttachedChip && (
@@ -64,8 +66,8 @@ export default function SearchBar({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           readOnly={isImageSearching}
-          placeholder={showAttachedChip ? "" : "他に探したいものはありますか？"}
-          aria-label="商品名や目的で検索"
+          placeholder={showAttachedChip ? "" : t.search.searchAgainPlaceholder}
+          aria-label={t.search.searchAgainPlaceholder}
           className={`h-14 w-full rounded-full border border-outline-variant bg-surface pl-20 pr-24 text-base text-on-surface shadow-sm placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 md:rounded-xl ${showAttachedChip ? "text-transparent caret-transparent" : ""}`}
           suppressHydrationWarning
         />
@@ -83,7 +85,7 @@ export default function SearchBar({
         </div>
         <button
           type="submit"
-          aria-label="検索する"
+          aria-label={t.search.submitAriaLabel}
           className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-on-primary transition-[transform,background-color] duration-150 ease-out hover:bg-primary/90 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/40 motion-reduce:transition-none motion-reduce:active:scale-100"
         >
           <span className="material-symbols-outlined text-[20px]">send</span>

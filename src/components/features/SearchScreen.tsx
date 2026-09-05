@@ -10,6 +10,8 @@ import SearchResults from "@/components/features/SearchResults";
 import { readCachedResults, writeCachedResults } from "@/lib/searchResultsCache";
 import { takePendingImageSearchFile } from "@/lib/pendingImageSearch";
 import { useImageSearch } from "@/lib/useImageSearch";
+import { useTranslations } from "@/lib/i18n/useTranslations";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { SearchResultItem } from "@/types/product";
 
 type SearchStatus = "idle" | "loading" | "empty-query" | "has-results" | "no-results";
@@ -20,9 +22,14 @@ interface SearchScreenProps {
 
 export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const router = useRouter();
+  const t = useTranslations();
+  const { locale } = useLocale();
   // サーバーとクライアントの初回レンダーを一致させるため、ここではsessionStorage/pending画像を参照しない。
   // 復元はマウント後のuseEffect内でのみ行う。
   const [query, setQuery] = useState(initialQuery);
+  // 見出し(「〇〇」の検索結果)に表示する検索語。検索バーの入力中の文字にリアルタイムで
+  // 連動させず、実際に検索が実行された(送信ボタン・音声入力での確定)タイミングでのみ更新する
+  const [submittedQuery, setSubmittedQuery] = useState(initialQuery);
   const [status, setStatus] = useState<SearchStatus>(() =>
     initialQuery.trim().length === 0 ? "empty-query" : "loading"
   );
@@ -62,7 +69,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         // フォールバック(AI検索失敗)の結果はキャッシュしない。キャッシュすると、
         // 一時的な失敗がその検索語に対して固着し、再訪問時もAI検索が再試行されなくなるため。
         if (!usedFallbackResult) {
-          writeCachedResults(rawQuery, { results: found, usedFallback: usedFallbackResult });
+          writeCachedResults(rawQuery, locale, { results: found, usedFallback: usedFallbackResult });
         }
       })
       .catch((error: unknown) => {
@@ -103,7 +110,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
     setUsedFallback(outcome.usedFallback);
     setStatus(outcome.results.length > 0 ? "has-results" : "no-results");
     if (!outcome.usedFallback) {
-      writeCachedResults(query, outcome);
+      writeCachedResults(query, locale, outcome);
     }
   };
 
@@ -121,7 +128,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         void executeImageSearch(pendingFile);
       }
     } else if (initialQuery.trim().length > 0) {
-      const cached = readCachedResults(initialQuery);
+      const cached = readCachedResults(initialQuery, locale);
       if (cached) {
         // ハイドレーション不一致を避けるため、sessionStorageの復元はマウント後のここでのみ行う
         setResults(cached.results);
@@ -138,11 +145,43 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 言語切り替え時、表示中の検索結果(商品説明・一致理由など翻訳対象のフィールドを含む)を
+  // 新しいロケールで再取得する。マウント時の初回実行は上のeffectに任せるためスキップする
+  const isFirstLocaleRenderRef = useRef(true);
+  useEffect(() => {
+    if (isFirstLocaleRenderRef.current) {
+      isFirstLocaleRenderRef.current = false;
+      return;
+    }
+
+    abortControllerRef.current?.abort();
+
+    if (attachedFile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void executeImageSearch(attachedFile);
+      return;
+    }
+
+    if (submittedQuery.trim().length === 0) return;
+
+    const cached = readCachedResults(submittedQuery, locale);
+    if (cached) {
+      setResults(cached.results);
+      setUsedFallback(cached.usedFallback);
+      setStatus(cached.results.length > 0 ? "has-results" : "no-results");
+    } else {
+      setStatus("loading");
+      executeSearch(submittedQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
+
   const handleSubmit = () => {
     if (attachedFile) {
       void executeImageSearch(attachedFile);
       return;
     }
+    setSubmittedQuery(query);
     router.replace(`/search?q=${encodeURIComponent(query)}`, { scroll: false });
     runSearch(query);
   };
@@ -150,6 +189,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const handleSelectImage = (file: File) => {
     setAttachedFile(file);
     setQuery("");
+    setSubmittedQuery("");
   };
 
   const handleRemoveAttachedImage = () => setAttachedFile(null);
@@ -157,6 +197,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const handleVoiceResult = (text: string) => {
     setAttachedFile(null);
     setQuery(text);
+    setSubmittedQuery(text);
     router.replace(`/search?q=${encodeURIComponent(text)}`, { scroll: false });
     runSearch(text);
   };
@@ -183,18 +224,25 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         <div className="animate-fade-in-up flex items-center gap-3">
           <Link
             href="/"
-            aria-label="戻る"
+            aria-label={t.common.back}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-variant"
           >
             <span className="material-symbols-outlined text-on-surface-variant">arrow_back</span>
           </Link>
           <h1 className="text-xl font-bold text-on-surface md:text-2xl">
-            {query.trim().length > 0 ? (
-              <>
-                <span className="text-primary">&ldquo;{query}&rdquo;</span> の検索結果
-              </>
+            {submittedQuery.trim().length > 0 ? (
+              (() => {
+                const [prefix, suffix] = t.search.resultsHeading.split("{query}");
+                return (
+                  <>
+                    {prefix}
+                    <span className="text-primary">{submittedQuery}</span>
+                    {suffix}
+                  </>
+                );
+              })()
             ) : (
-              "検索結果"
+              t.search.resultsHeadingEmpty
             )}
           </h1>
         </div>
@@ -203,32 +251,27 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
           <div className="animate-fade-in-up flex flex-col items-center gap-3">
             <Image
               src="/images/design-reference/store-search-empty.png"
-              alt="水彩で描かれたスーパーマーケット"
+              alt={t.search.heroImageAlt}
               width={800}
               height={400}
               className="h-auto w-[176px] max-w-full object-contain opacity-90 md:w-[220px]"
             />
             <p role="status" className="text-center text-sm font-medium text-on-surface-variant">
-              検索中です…
+              {t.search.loading}
             </p>
           </div>
         )}
 
-        {status === "empty-query" && <EmptyState message="商品名や目的を入力してください" />}
+        {status === "empty-query" && <EmptyState message={t.search.emptyQuery} />}
 
         {(status === "no-results" || status === "has-results") && usedFallback && (
           <p className="animate-fade-in-up rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-700">
-            AI検索が一時的に利用できないため、簡易検索の結果を表示しています
+            {t.search.fallbackBanner}
           </p>
         )}
 
         {status === "no-results" && (
-          <EmptyState
-            message={
-              imageSearchError ?? "該当する商品が見つかりませんでした。別の言葉で検索してください。"
-            }
-            showImage
-          />
+          <EmptyState message={imageSearchError ?? t.search.noResults} showImage />
         )}
 
         {status === "has-results" && <SearchResults results={results} />}

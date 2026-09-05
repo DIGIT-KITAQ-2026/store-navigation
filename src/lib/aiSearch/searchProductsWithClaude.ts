@@ -1,4 +1,5 @@
 import { runClaudeCli } from "./claudeCli";
+import { DEFAULT_LOCALE, LOCALE_LANGUAGE_NAMES, type Locale } from "@/lib/i18n/locales";
 
 export interface CatalogItem {
   id: string;
@@ -17,21 +18,35 @@ interface ClaudeCliResult {
   result: string;
 }
 
-function buildPrompt(query: string, catalog: CatalogItem[]): string {
-  return [
+function buildPrompt(query: string, catalog: CatalogItem[], locale: Locale): string {
+  const lines = [
     "あなたはスーパー・コンビニの店内商品検索アシスタントです。",
     "以下の商品リスト(JSON配列)の中から、ユーザーの検索語に合う商品をすべて選んでください。",
     "商品名の部分一致だけでなく、「カレーに使う調味料」「朝食に必要なもの」のような",
     "用途・目的を表す抽象的な検索語にも対応し、関連する商品を見つけてください。",
+    "検索語が日本語以外の言語であっても、商品リスト自体は日本語のままなので、",
+    "意味を理解したうえで関連する商品を見つけてください。",
     "該当する商品がない場合は matches を空配列にしてください。存在しないIDを作らないでください。",
     "",
     `検索語: ${query}`,
     "",
     `商品リスト: ${JSON.stringify(catalog)}`,
     "",
+  ];
+
+  if (locale !== DEFAULT_LOCALE) {
+    lines.push(
+      `reasonフィールドの文章は${LOCALE_LANGUAGE_NAMES[locale]}で書いてください(商品リストの他のフィールドは翻訳しないこと)。`,
+      ""
+    );
+  }
+
+  lines.push(
     "以下の形式のJSONのみを出力してください。説明文やコードブロック(```)は一切付けないでください:",
-    '{"matches":[{"productId":"...","reason":"..."}]}',
-  ].join("\n");
+    '{"matches":[{"productId":"...","reason":"..."}]}'
+  );
+
+  return lines.join("\n");
 }
 
 /** Claudeがまれに```json ... ```で囲んで返した場合に備えて取り除く */
@@ -48,11 +63,12 @@ function stripCodeFence(text: string): string {
  */
 export async function searchProductsWithClaude(
   query: string,
-  catalog: CatalogItem[]
+  catalog: CatalogItem[],
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ClaudeSearchMatch[]> {
   if (catalog.length === 0) return [];
 
-  const prompt = buildPrompt(query, catalog);
+  const prompt = buildPrompt(query, catalog, locale);
 
   const { stdout } = await runClaudeCli(["-p", prompt, "--output-format", "json", "--tools", ""], {
     timeout: 45_000,

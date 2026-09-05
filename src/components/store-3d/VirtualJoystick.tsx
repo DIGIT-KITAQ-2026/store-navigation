@@ -11,6 +11,7 @@ const DEAD_ZONE = 0.12;
 interface VirtualJoystickProps {
   /** forward/rightへ書き込む共有ref。FirstPersonController側がuseFrame内で読み取る */
   inputRef: React.RefObject<MovementInput>;
+  ariaLabel: string;
 }
 
 /**
@@ -18,7 +19,7 @@ interface VirtualJoystickProps {
  * pointerIdのみを追跡し(他の指は無視)、入力値はReact stateを介さずuseRefへ直接書き込む。
  * 指を離す/pointercancel/lostpointercapture/window blur/アンマウントのいずれでも必ず0へ戻す
  */
-export default function VirtualJoystick({ inputRef }: VirtualJoystickProps) {
+export default function VirtualJoystick({ inputRef, ariaLabel }: VirtualJoystickProps) {
   const baseRef = useRef<HTMLDivElement | null>(null);
   const knobRef = useRef<HTMLDivElement | null>(null);
   const pointerIdRef = useRef<number | null>(null);
@@ -106,7 +107,7 @@ export default function VirtualJoystick({ inputRef }: VirtualJoystickProps) {
   return (
     <div
       ref={baseRef}
-      aria-label="移動スティック"
+      aria-label={ariaLabel}
       data-no-look-control="true"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}

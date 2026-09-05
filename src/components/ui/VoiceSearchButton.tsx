@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useVoiceSearch } from "@/lib/voice/useVoiceSearch";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 
 interface VoiceSearchButtonProps {
   onResult: (text: string) => void;
@@ -16,6 +17,7 @@ interface VoiceSearchButtonProps {
  * getUserMedia/MediaRecorderに対応していない場合は何も描画しない(段階的機能強化)。
  */
 export default function VoiceSearchButton({ onResult, disabled, onError }: VoiceSearchButtonProps) {
+  const t = useTranslations();
   const { isSupported, isListening, isTranscribing, error, startListening, stopListening } =
     useVoiceSearch((text) => {
       onResult(text);
@@ -43,7 +45,7 @@ export default function VoiceSearchButton({ onResult, disabled, onError }: Voice
       type="button"
       onClick={handleClick}
       disabled={disabled || busy}
-      aria-label={isListening ? "音声入力を停止" : "音声で検索"}
+      aria-label={isListening ? t.voiceSearch.stop : t.voiceSearch.start}
       aria-pressed={isListening}
       className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 ${
         isListening

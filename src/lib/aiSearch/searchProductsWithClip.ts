@@ -2,6 +2,8 @@ import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude"
 import { embedTexts } from "./clip/models";
 import { matchProductsByVector } from "./clip/matchProducts";
 import { fallbackSearch, normalizeSearchText, stripSearchPunctuation } from "./fallbackSearch";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { buildSearchReason } from "./searchReasons";
 
 /**
  * 自然文の検索語で商品を検索する。文字列一致(語彙検索)と意味検索の2段構えにしている。
@@ -18,7 +20,8 @@ import { fallbackSearch, normalizeSearchText, stripSearchPunctuation } from "./f
  */
 export async function searchProductsWithClip(
   query: string,
-  catalog: CatalogItem[]
+  catalog: CatalogItem[],
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ClaudeSearchMatch[]> {
   // 音声入力は文末に句点が付く。付いたままだと意味検索のスコアが下がって0件になるため落とす。
   // ここでカタカナをひらがなに寄せないのは、意味検索の埋め込みが劣化するため(fallbackSearch参照)
@@ -30,7 +33,9 @@ export async function searchProductsWithClip(
   const words = trimmed.split(" ").filter(Boolean);
   const lexicalMatches = [
     ...new Map(
-      words.flatMap((word) => fallbackSearch(word, catalog)).map((match) => [match.productId, match])
+        words
+        .flatMap((word) => fallbackSearch(word, catalog, locale))
+        .map((match) => [match.productId, match])
     ).values(),
   ];
   const lexicalIds = new Set(lexicalMatches.map((match) => match.productId));
@@ -51,7 +56,7 @@ export async function searchProductsWithClip(
   const semanticMatches = await matchProductsByVector(
     queryVector,
     catalog,
-    (item) => `「${trimmed}」に関連する商品として「${item.name}」が見つかりました`
+    (item) => buildSearchReason("semantic", { query: trimmed, name: item.name }, locale)
   );
 
   // 文字列一致を優先し、意味検索の結果は重複を除いて後ろに足す
