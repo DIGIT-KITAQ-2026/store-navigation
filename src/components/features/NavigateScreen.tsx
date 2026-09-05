@@ -86,6 +86,7 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
               initialMode="auto-demo"
               guideVisible={guideStarted}
               className="h-full w-full"
+              locale={locale}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-surface-variant/40 px-6 text-center">

@@ -68,6 +68,33 @@ export interface Dictionary {
     stop: string;
     start: string;
   };
+  navigate3d: {
+    destinationLabel: string;
+    modeFirstPerson: string;
+    modeAutoDemo: string;
+    demoStatusIdle: string;
+    demoStatusPlaying: string;
+    demoStatusPaused: string;
+    demoStatusArrived: string;
+    demoStatusLabel: string;
+    pointerLockPrompt: string;
+    pointerLockHint: string;
+    pointerLockUnsupported: string;
+    pointerLockedHint: string;
+    mobileMoveHint: string;
+    mobileLookHint: string;
+    restartAriaLabel: string;
+    restartTitle: string;
+    pause: string;
+    play: string;
+    playAgain: string;
+    joystickAriaLabel: string;
+    loading: string;
+    unsupportedBrowser: string;
+    unsupportedMessage: string;
+    errorMessage: string;
+    entranceLabel: string;
+  };
 }
 
 const ja: Dictionary = {
@@ -136,6 +163,33 @@ const ja: Dictionary = {
   voiceSearch: {
     stop: "音声入力を停止",
     start: "音声で検索",
+  },
+  navigate3d: {
+    destinationLabel: "目的地",
+    modeFirstPerson: "一人称で歩く",
+    modeAutoDemo: "自動デモ",
+    demoStatusIdle: "開始前",
+    demoStatusPlaying: "再生中",
+    demoStatusPaused: "一時停止",
+    demoStatusArrived: "到着",
+    demoStatusLabel: "デモ: {status}",
+    pointerLockPrompt: "クリックして視点操作を開始",
+    pointerLockHint: "WASDまたは矢印キーで移動、マウスで視点操作、Escキーで終了します。",
+    pointerLockUnsupported: "この環境では第一人称のマウス操作を利用できません。自動デモをご利用ください。",
+    pointerLockedHint: "Escキーで視点操作を終了",
+    mobileMoveHint: "左のスティックで移動",
+    mobileLookHint: "画面をスワイプして見回す",
+    restartAriaLabel: "最初から再スタート",
+    restartTitle: "最初から",
+    pause: "一時停止",
+    play: "再生",
+    playAgain: "もう一度再生",
+    joystickAriaLabel: "移動スティック",
+    loading: "3D店内を読み込んでいます…",
+    unsupportedBrowser: "対応ブラウザ(最新のChrome・Edge・Safariなど)でアクセスすると3D表示をご利用いただけます。",
+    unsupportedMessage: "お使いの環境では3D表示をご利用いただけません。",
+    errorMessage: "3D表示の読み込み中に問題が発生しました。",
+    entranceLabel: "入口",
   },
 };
 
