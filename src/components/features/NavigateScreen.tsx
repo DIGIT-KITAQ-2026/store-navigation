@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import StoreNavigation3D from "@/components/store-3d/StoreNavigation3D";
 import GuidePanel from "@/components/features/GuidePanel";
 import { findKnownDestination } from "@/lib/store-navigation/store-layout";
+import { useTranslations, format } from "@/lib/i18n/useTranslations";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { translateCategory } from "@/lib/i18n/categoryLabels";
 import type { Product } from "@/types/product";
 
 interface NavigateScreenProps {
@@ -13,7 +16,8 @@ interface NavigateScreenProps {
 
 export default function NavigateScreen({ product }: NavigateScreenProps) {
   const router = useRouter();
-  const [guideMessage, setGuideMessage] = useState<string | null>(null);
+  const t = useTranslations();
+  const { locale } = useLocale();
   // 「3D案内を開始」が押されたか(経路・矢印・目的地マーカーをStoreNavigation3D側に表示するか)。
   // 商品ページを開いた直後は常にfalseで、3D店舗自体は見えるが案内表示は出さない
   const [guideStarted, setGuideStarted] = useState(false);
@@ -22,6 +26,11 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
   // 棚未登録・未登録値の場合はnullとなり、3D案内自体を出さない(resolveDestination()の
   // Shelf_01フォールバックには乗せない。実商品を誤って青果へ案内してしまうため)
   const destination = findKnownDestination(product.shelfId);
+  const destinationLabel = destination ? translateCategory(destination.label, locale) : null;
+  // 表示中のロケールから毎回組み立てる(押した瞬間の言語で固定したstateにすると、
+  // 案内開始後に言語を切り替えても翻訳されないままになるため)
+  const guideMessage =
+    guideStarted && destinationLabel ? format(t.guide.guideMessage, { label: destinationLabel }) : null;
 
   // 商品(=棚ID)が変わったら、以前の商品ページで案内開始済みだった状態を持ち越さない。
   // useEffectではなくレンダー中にstateを調整するReact推奨パターンを使う
@@ -31,13 +40,11 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
   if (guideResetKey !== lastGuideResetKey) {
     setLastGuideResetKey(guideResetKey);
     setGuideStarted(false);
-    setGuideMessage(null);
   }
 
   const handleStartGuide = () => {
-    if (!destination) return;
+    if (!destination || !destinationLabel) return;
     setGuideStarted(true);
-    setGuideMessage(`3D店内マップで${destination.label}への案内を表示します`);
   };
 
   const handleBackToSearch = () => {
@@ -57,12 +64,12 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
         <button
           type="button"
           onClick={handleBackToSearch}
-          aria-label="検索結果に戻る"
+          aria-label={t.navigate.backToSearch}
           className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-surface-variant"
         >
           <span className="material-symbols-outlined text-on-surface-variant">arrow_back</span>
         </button>
-        <h1 className="text-xl font-bold text-on-surface">検索結果に戻る</h1>
+        <h1 className="text-xl font-bold text-on-surface">{t.navigate.backToSearch}</h1>
       </div>
 
       <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
@@ -80,12 +87,11 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
               initialMode="auto-demo"
               guideVisible={guideStarted}
               className="h-full w-full"
+              locale={locale}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-surface-variant/40 px-6 text-center">
-              <p className="text-sm font-medium text-on-surface-variant">
-                この商品の売り場情報は現在準備中です
-              </p>
+              <p className="text-sm font-medium text-on-surface-variant">{t.guide.pendingLocation}</p>
             </div>
           )}
         </div>
@@ -93,7 +99,7 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
         <div className="animate-fade-in-up w-full shrink-0 p-4 md:h-full md:w-[380px] md:overflow-y-auto md:border-l md:border-outline-variant md:p-6">
           <GuidePanel
             product={product}
-            destinationLabel={destination?.label ?? null}
+            destinationLabel={destinationLabel}
             guideMessage={guideMessage}
             guideStarted={guideStarted}
             onStartGuide={handleStartGuide}

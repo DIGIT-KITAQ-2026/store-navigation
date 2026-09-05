@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import StoreEnvironment from "./StoreEnvironment";
 import StoreFixtures from "./StoreFixtures";
@@ -14,6 +15,9 @@ import {
   NAVIGATION_NODES,
   PRODUCE_FIXTURE,
 } from "@/lib/store-navigation/store-layout";
+import { translateCategory } from "@/lib/i18n/categoryLabels";
+import { dictionaries } from "@/lib/i18n/dictionaries";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import type { MovementInput, NavigationViewMode, StoreDestination, Vector3Tuple } from "@/lib/store-navigation/types";
 
 const BACKGROUND_COLOR = "#eef4f5";
@@ -37,6 +41,8 @@ interface StoreSceneProps {
   onArrive: () => void;
   onLockChange: (locked: boolean) => void;
   onReady?: () => void;
+  /** カテゴリサイン(棚上のラベル)・入口ラベルの表示言語。未指定時は日本語のまま(/store-3d-demo等) */
+  locale?: Locale;
 }
 
 /**
@@ -55,11 +61,20 @@ export default function StoreScene({
   onArrive,
   onLockChange,
   onReady,
+  locale = DEFAULT_LOCALE,
 }: StoreSceneProps) {
   const spawnPosition = path[0] ?? ENTRANCE_FALLBACK_POSITION;
   // 目的地マーカーは各棚コンポーネント側でactiveDestinationId(fixture)/isActive(青果)の一致判定で
   // 表示を切り替えているため、guideVisible=falseの間はどの棚とも一致しないIDを渡して非表示にする
   const activeDestinationId = guideVisible ? destination.id : "";
+
+  // カテゴリサイン(棚上のラベル)は固定8種の静的対応表(翻訳API呼び出し不要)でlocaleに合わせて置き換える
+  const translatedFixtures = useMemo(
+    () => GENERIC_STORE_FIXTURES.map((fixture) => ({ ...fixture, label: translateCategory(fixture.label, locale) })),
+    [locale],
+  );
+  const translatedProduceLabel = translateCategory(PRODUCE_FIXTURE.label, locale);
+  const entranceLabel = dictionaries[locale].navigate3d.entranceLabel;
 
   return (
     <Canvas
@@ -75,16 +90,16 @@ export default function StoreScene({
       <ambientLight intensity={0.35} />
       <directionalLight position={[6, 10, 4]} intensity={0.6} />
 
-      <StoreEnvironment />
+      <StoreEnvironment entranceLabel={entranceLabel} />
       <StoreFixtures
-        fixtures={GENERIC_STORE_FIXTURES}
+        fixtures={translatedFixtures}
         activeDestinationId={activeDestinationId}
         reducedMotion={reducedMotion}
         showsMobileControls={showsMobileControls}
       />
       <ProduceArea
         position={PRODUCE_FIXTURE.position}
-        label={PRODUCE_FIXTURE.label}
+        label={translatedProduceLabel}
         isActive={activeDestinationId === PRODUCE_FIXTURE.id}
         reducedMotion={reducedMotion}
         showsMobileControls={showsMobileControls}

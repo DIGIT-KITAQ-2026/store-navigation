@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 
 interface ImageSearchButtonProps {
   onSelectFile: (file: File) => void;
@@ -23,6 +24,7 @@ export default function ImageSearchButton({
   isSearching,
   menuPosition = "down",
 }: ImageSearchButtonProps) {
+  const t = useTranslations();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -74,7 +76,7 @@ export default function ImageSearchButton({
             className="flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm text-on-surface transition-colors hover:bg-surface-variant"
           >
             <span className="material-symbols-outlined text-[20px] text-on-surface-variant">photo_camera</span>
-            カメラで検索
+            {t.imageSearch.cameraOption}
           </button>
           <button
             type="button"
@@ -83,7 +85,7 @@ export default function ImageSearchButton({
             className="flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm text-on-surface transition-colors hover:bg-surface-variant"
           >
             <span className="material-symbols-outlined text-[20px] text-on-surface-variant">image</span>
-            画像を添付
+            {t.imageSearch.galleryOption}
           </button>
         </div>
       )}
@@ -91,7 +93,7 @@ export default function ImageSearchButton({
         type="button"
         onClick={toggleMenu}
         disabled={isSearching}
-        aria-label="画像で検索(カメラ・画像添付)"
+        aria-label={t.imageSearch.buttonAriaLabel}
         aria-expanded={isMenuOpen}
         aria-haspopup="menu"
         className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"

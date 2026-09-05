@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { runClaudeCli } from "./claudeCli";
 import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude";
+import { DEFAULT_LOCALE, LOCALE_LANGUAGE_NAMES, type Locale } from "@/lib/i18n/locales";
 
 interface ClaudeCliResult {
   is_error: boolean;
@@ -16,8 +17,8 @@ function stripCodeFence(text: string): string {
   return match ? match[1] : trimmed;
 }
 
-function buildPrompt(imagePath: string, catalog: CatalogItem[]): string {
-  return [
+function buildPrompt(imagePath: string, catalog: CatalogItem[], locale: Locale): string {
+  const lines = [
     "あなたはスーパー・コンビニの店内商品検索アシスタントです。",
     `以下の画像を見てください: ${imagePath}`,
     "この画像に写っている商品が、以下の商品リスト(JSON配列)の中に存在するかどうかを判定してください。",
@@ -27,9 +28,21 @@ function buildPrompt(imagePath: string, catalog: CatalogItem[]): string {
     "",
     `商品リスト: ${JSON.stringify(catalog)}`,
     "",
+  ];
+
+  if (locale !== DEFAULT_LOCALE) {
+    lines.push(
+      `reasonフィールドの文章は${LOCALE_LANGUAGE_NAMES[locale]}で書いてください(商品リストの他のフィールドは翻訳しないこと)。`,
+      ""
+    );
+  }
+
+  lines.push(
     "以下の形式のJSONのみを出力してください。説明文やコードブロック(```)は一切付けないでください:",
-    '{"matches":[{"productId":"...","reason":"..."}]}',
-  ].join("\n");
+    '{"matches":[{"productId":"...","reason":"..."}]}'
+  );
+
+  return lines.join("\n");
 }
 
 /**
@@ -40,7 +53,8 @@ function buildPrompt(imagePath: string, catalog: CatalogItem[]): string {
 export async function searchProductsWithClaudeVision(
   imageBuffer: Buffer,
   imageExtension: string,
-  catalog: CatalogItem[]
+  catalog: CatalogItem[],
+  locale: Locale = DEFAULT_LOCALE
 ): Promise<ClaudeSearchMatch[]> {
   if (catalog.length === 0) return [];
 
@@ -50,7 +64,7 @@ export async function searchProductsWithClaudeVision(
   try {
     await writeFile(imagePath, imageBuffer);
 
-    const prompt = buildPrompt(imagePath, catalog);
+    const prompt = buildPrompt(imagePath, catalog, locale);
 
     const { stdout } = await runClaudeCli(
       ["-p", prompt, "--output-format", "json", "--tools", "Read", "--add-dir", workDir],

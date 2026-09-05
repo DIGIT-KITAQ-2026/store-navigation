@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import VirtualJoystick from "./VirtualJoystick";
+import { format } from "@/lib/i18n/useTranslations";
+import type { Dictionary } from "@/lib/i18n/dictionaries/ja";
 import type { MovementInput, NavigationViewMode } from "@/lib/store-navigation/types";
+
+type Navigate3DDictionary = Dictionary["navigate3d"];
 
 export type DemoPlaybackState = "idle" | "playing" | "paused" | "arrived";
 export type CanvasStatus = "unsupported" | "ready" | "error";
@@ -27,6 +31,7 @@ interface NavigationOverlayProps {
   isPointerLocked: boolean;
   showsMobileControls: boolean;
   movementInputRef: React.RefObject<MovementInput>;
+  t: Navigate3DDictionary;
 }
 
 function ModeButton({
@@ -64,7 +69,7 @@ const MOBILE_HINT_VISIBLE_MS = 2600;
  * スマホの一人称モードへ切り替えた直後だけ中央へ大きく操作方法を表示し、数秒後にフェードアウトする。
  * PC向けの「クリックして視点操作を開始」相当の説明をスマホ向けに置き換えるためのもの
  */
-function MobileFirstPersonHint() {
+function MobileFirstPersonHint({ t }: { t: Navigate3DDictionary }) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -79,8 +84,8 @@ function MobileFirstPersonHint() {
       }`}
     >
       <div className="max-w-[220px] rounded-xl border border-outline-variant bg-white/95 px-4 py-3 text-center shadow-md">
-        <p className="text-sm font-bold text-teal-700">左のスティックで移動</p>
-        <p className="mt-1 text-xs text-on-surface-variant">画面をスワイプして見回す</p>
+        <p className="text-sm font-bold text-teal-700">{t.mobileMoveHint}</p>
+        <p className="mt-1 text-xs text-on-surface-variant">{t.mobileLookHint}</p>
       </div>
     </div>
   );
@@ -103,6 +108,7 @@ export default function NavigationOverlay({
   isPointerLocked,
   showsMobileControls,
   movementInputRef,
+  t,
 }: NavigationOverlayProps) {
   const controlsAvailable = canvasStatus !== "unsupported" && canvasStatus !== "error";
   const isMobileFirstPerson = mode === "first-person" && controlsAvailable && showsMobileControls;
@@ -112,7 +118,13 @@ export default function NavigationOverlay({
   const pointerLockSupported = typeof document !== "undefined" && "pointerLockElement" in document;
 
   const demoStatusText =
-    demoState === "arrived" ? "到着" : demoState === "playing" ? "再生中" : demoState === "paused" ? "一時停止" : "開始前";
+    demoState === "arrived"
+      ? t.demoStatusArrived
+      : demoState === "playing"
+        ? t.demoStatusPlaying
+        : demoState === "paused"
+          ? t.demoStatusPaused
+          : t.demoStatusIdle;
 
   return (
     <div
@@ -128,7 +140,7 @@ export default function NavigationOverlay({
         <div className="flex items-center gap-2 self-start rounded-xl border border-outline-variant bg-white/95 px-3 py-1.5 shadow-sm sm:py-2">
           <span className="material-symbols-outlined text-teal-600">storefront</span>
           <div>
-            <p className="text-[11px] font-medium leading-tight text-on-surface-variant">目的地</p>
+            <p className="text-[11px] font-medium leading-tight text-on-surface-variant">{t.destinationLabel}</p>
             <p className="text-sm font-bold leading-tight text-on-surface">{destinationLabel}</p>
           </div>
         </div>
@@ -138,20 +150,20 @@ export default function NavigationOverlay({
             <ModeButton
               active={mode === "first-person"}
               icon="directions_walk"
-              label="一人称で歩く"
+              label={t.modeFirstPerson}
               onClick={() => onModeChange("first-person")}
             />
             <ModeButton
               active={mode === "auto-demo"}
               icon="videocam"
-              label="自動デモ"
+              label={t.modeAutoDemo}
               onClick={() => onModeChange("auto-demo")}
             />
           </div>
         )}
       </div>
 
-      {isMobileFirstPerson && <MobileFirstPersonHint />}
+      {isMobileFirstPerson && <MobileFirstPersonHint t={t} />}
 
       {isPcFirstPerson && !isPointerLocked && (
         <div className="pointer-events-none flex flex-1 items-center justify-center">
@@ -161,14 +173,12 @@ export default function NavigationOverlay({
               id={POINTER_LOCK_TRIGGER_ID}
               className="pointer-events-auto max-w-xs rounded-xl border border-outline-variant bg-white/95 px-4 py-3 text-center text-sm text-on-surface shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
             >
-              <p className="font-bold text-teal-700">クリックして視点操作を開始</p>
-              <p className="mt-1 text-xs text-on-surface-variant">WASDまたは矢印キーで移動、マウスで視点操作、Escキーで終了します。</p>
+              <p className="font-bold text-teal-700">{t.pointerLockPrompt}</p>
+              <p className="mt-1 text-xs text-on-surface-variant">{t.pointerLockHint}</p>
             </button>
           ) : (
             <div className="pointer-events-auto max-w-xs rounded-xl border border-outline-variant bg-white/95 px-4 py-3 text-center text-sm text-on-surface shadow-md">
-              <p className="font-bold text-on-surface-variant">
-                この環境では第一人称のマウス操作を利用できません。自動デモをご利用ください。
-              </p>
+              <p className="font-bold text-on-surface-variant">{t.pointerLockUnsupported}</p>
             </div>
           )}
         </div>
@@ -178,15 +188,15 @@ export default function NavigationOverlay({
         <div className="flex items-end gap-2">
           {mode === "auto-demo" && controlsAvailable && (
             <p role="status" className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-teal-800 shadow-sm">
-              デモ: {demoStatusText}
+              {format(t.demoStatusLabel, { status: demoStatusText })}
             </p>
           )}
           {isPcFirstPerson && isPointerLocked && (
             <p className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-on-surface-variant shadow-sm">
-              Escキーで視点操作を終了
+              {t.pointerLockedHint}
             </p>
           )}
-          {isMobileFirstPerson && <VirtualJoystick inputRef={movementInputRef} />}
+          {isMobileFirstPerson && <VirtualJoystick inputRef={movementInputRef} ariaLabel={t.joystickAriaLabel} />}
         </div>
 
         {mode === "auto-demo" && controlsAvailable && (
@@ -194,8 +204,8 @@ export default function NavigationOverlay({
             <button
               type="button"
               onClick={onRestart}
-              aria-label="最初から再スタート"
-              title="最初から"
+              aria-label={t.restartAriaLabel}
+              title={t.restartTitle}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-outline-variant bg-white/95 text-on-surface-variant shadow-sm transition-colors hover:text-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
             >
               <span className="material-symbols-outlined">replay</span>
@@ -209,7 +219,7 @@ export default function NavigationOverlay({
                 className="flex min-h-11 items-center gap-1.5 rounded-full bg-teal-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
               >
                 <span className="material-symbols-outlined text-[18px]">pause</span>
-                一時停止
+                {t.pause}
               </button>
             ) : (
               <button
@@ -219,7 +229,7 @@ export default function NavigationOverlay({
                 className="flex min-h-11 items-center gap-1.5 rounded-full bg-teal-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
               >
                 <span className="material-symbols-outlined text-[18px]">play_arrow</span>
-                {demoState === "arrived" ? "もう一度再生" : "再生"}
+                {demoState === "arrived" ? t.playAgain : t.play}
               </button>
             )}
           </div>

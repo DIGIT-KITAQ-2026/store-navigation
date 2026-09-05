@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 
 interface AttachedImageChipProps {
   file: File;
@@ -14,6 +15,7 @@ interface AttachedImageChipProps {
  * 検索処理自体はファイル名を一切見ない(searchProductsWithClaudeVisionが画像の中身だけを見る)。
  */
 export default function AttachedImageChip({ file, onRemove }: AttachedImageChipProps) {
+  const t = useTranslations();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
 
@@ -55,7 +57,7 @@ export default function AttachedImageChip({ file, onRemove }: AttachedImageChipP
         <button
           type="button"
           onClick={onRemove}
-          aria-label="添付した画像を取り消す"
+          aria-label={t.imageSearch.removeAriaLabel}
           className="pointer-events-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant"
         >
           <span className="material-symbols-outlined text-[16px]">close</span>

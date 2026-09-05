@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 
 const FALLBACK_STORE_NAME = "Smart Store Navi";
 
@@ -12,6 +14,7 @@ interface StoreHeaderProps {
 
 export default function StoreHeader({ storeName }: StoreHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const t = useTranslations();
 
   return (
     <header className="sticky top-0 z-40 border-b border-outline-variant bg-surface shadow-sm">
@@ -32,7 +35,7 @@ export default function StoreHeader({ storeName }: StoreHeaderProps) {
         <div className="relative shrink-0">
           <button
             type="button"
-            aria-label="メニューを開く"
+            aria-label={t.storeHeader.menuOpen}
             aria-expanded={isMenuOpen}
             onClick={() => setIsMenuOpen((open) => !open)}
             className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface hover:bg-surface-variant"
@@ -46,11 +49,13 @@ export default function StoreHeader({ storeName }: StoreHeaderProps) {
             <>
               <button
                 type="button"
-                aria-label="メニューを閉じる"
+                aria-label={t.storeHeader.menuClose}
                 onClick={() => setIsMenuOpen(false)}
                 className="fixed inset-0 z-40 cursor-default"
               />
               <div className="absolute right-0 top-12 z-50 w-56 rounded-lg border border-outline-variant bg-surface p-2 shadow-lg">
+                <LanguageSwitcher onSelect={() => setIsMenuOpen(false)} />
+                <div className="my-1 border-t border-outline-variant" />
                 <Link
                   href="/admin/login"
                   onClick={() => setIsMenuOpen(false)}
@@ -59,7 +64,7 @@ export default function StoreHeader({ storeName }: StoreHeaderProps) {
                   <span className="material-symbols-outlined text-lg" aria-hidden>
                     code
                   </span>
-                  管理者ログイン
+                  {t.storeHeader.adminLogin}
                 </Link>
               </div>
             </>

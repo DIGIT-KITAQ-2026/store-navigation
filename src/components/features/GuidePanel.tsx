@@ -1,4 +1,7 @@
+"use client";
+
 import type { Product } from "@/types/product";
+import { useTranslations, format } from "@/lib/i18n/useTranslations";
 
 interface GuidePanelProps {
   product: Product;
@@ -17,6 +20,8 @@ export default function GuidePanel({
   guideStarted,
   onStartGuide,
 }: GuidePanelProps) {
+  const t = useTranslations();
+
   return (
     <div className="w-full rounded-xl border border-outline-variant bg-surface p-5 shadow-xl">
       {product.category && (
@@ -34,7 +39,7 @@ export default function GuidePanel({
       {destinationLabel !== null && (
         <span className="mt-2 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary-container px-3 py-1 text-sm font-semibold text-on-primary-container">
           <span className="material-symbols-outlined text-[18px]">shelves</span>
-          棚ID: {product.shelfId}
+          {format(t.guide.shelfId, { shelfId: product.shelfId ?? "" })}
         </span>
       )}
 
@@ -42,13 +47,17 @@ export default function GuidePanel({
         <div className="mt-4 flex items-start gap-3 rounded-lg bg-surface-variant/60 p-3">
           <span className="material-symbols-outlined mt-0.5 text-primary">directions_walk</span>
           <p className="text-sm leading-relaxed text-on-surface-variant">
-            {product.name}は{product.category}コーナーの棚{product.shelfNumber}にあります
+            {format(t.guide.locationSentence, {
+              name: product.name,
+              category: destinationLabel,
+              shelfNumber: product.shelfNumber ?? "",
+            })}
           </p>
         </div>
       ) : (
         <div className="mt-4 flex items-start gap-3 rounded-lg bg-surface-variant/60 p-3">
           <span className="material-symbols-outlined mt-0.5 text-on-surface-variant">info</span>
-          <p className="text-sm leading-relaxed text-on-surface-variant">この商品の売り場情報は現在準備中です</p>
+          <p className="text-sm leading-relaxed text-on-surface-variant">{t.guide.pendingLocation}</p>
         </div>
       )}
 
@@ -75,7 +84,7 @@ export default function GuidePanel({
           }`}
         >
           <span className="material-symbols-outlined">{guideStarted ? "check_circle" : "navigation"}</span>
-          {guideStarted ? "3D案内を表示中" : "3D案内を開始"}
+          {guideStarted ? t.guide.guideShowing : t.guide.guideStart}
         </button>
       )}
     </div>
