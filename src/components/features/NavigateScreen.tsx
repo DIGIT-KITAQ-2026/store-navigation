@@ -18,7 +18,6 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
   const router = useRouter();
   const t = useTranslations();
   const { locale } = useLocale();
-  const [guideMessage, setGuideMessage] = useState<string | null>(null);
   // 「3D案内を開始」が押されたか(経路・矢印・目的地マーカーをStoreNavigation3D側に表示するか)。
   // 商品ページを開いた直後は常にfalseで、3D店舗自体は見えるが案内表示は出さない
   const [guideStarted, setGuideStarted] = useState(false);
@@ -28,6 +27,10 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
   // Shelf_01フォールバックには乗せない。実商品を誤って青果へ案内してしまうため)
   const destination = findKnownDestination(product.shelfId);
   const destinationLabel = destination ? translateCategory(destination.label, locale) : null;
+  // 表示中のロケールから毎回組み立てる(押した瞬間の言語で固定したstateにすると、
+  // 案内開始後に言語を切り替えても翻訳されないままになるため)
+  const guideMessage =
+    guideStarted && destinationLabel ? format(t.guide.guideMessage, { label: destinationLabel }) : null;
 
   // 商品(=棚ID)が変わったら、以前の商品ページで案内開始済みだった状態を持ち越さない。
   // useEffectではなくレンダー中にstateを調整するReact推奨パターンを使う
@@ -37,13 +40,11 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
   if (guideResetKey !== lastGuideResetKey) {
     setLastGuideResetKey(guideResetKey);
     setGuideStarted(false);
-    setGuideMessage(null);
   }
 
   const handleStartGuide = () => {
     if (!destination || !destinationLabel) return;
     setGuideStarted(true);
-    setGuideMessage(format(t.guide.guideMessage, { label: destinationLabel }));
   };
 
   const handleBackToSearch = () => {
