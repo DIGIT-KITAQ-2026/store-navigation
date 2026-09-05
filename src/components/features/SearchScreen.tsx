@@ -132,6 +132,37 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 言語切り替え時、表示中の検索結果(商品説明・一致理由など翻訳対象のフィールドを含む)を
+  // 新しいロケールで再取得する。マウント時の初回実行は上のeffectに任せるためスキップする
+  const isFirstLocaleRenderRef = useRef(true);
+  useEffect(() => {
+    if (isFirstLocaleRenderRef.current) {
+      isFirstLocaleRenderRef.current = false;
+      return;
+    }
+
+    abortControllerRef.current?.abort();
+
+    if (attachedFile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void executeImageSearch(attachedFile);
+      return;
+    }
+
+    if (submittedQuery.trim().length === 0) return;
+
+    const cached = readCachedResults(submittedQuery, locale);
+    if (cached) {
+      setResults(cached.results);
+      setUsedFallback(cached.usedFallback);
+      setStatus(cached.results.length > 0 ? "has-results" : "no-results");
+    } else {
+      setStatus("loading");
+      executeSearch(submittedQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
+
   const handleSubmit = () => {
     if (attachedFile) {
       void executeImageSearch(attachedFile);
