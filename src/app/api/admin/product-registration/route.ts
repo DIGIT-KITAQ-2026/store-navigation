@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { requireAdminSession, adminAuthErrorResponse } from "@/lib/supabase/adminAuth";
 import type { Database } from "@/lib/supabase/database.types";
 
 interface RequestBody {
@@ -30,10 +31,13 @@ async function upsertBarcodeLookupCache(
   }
 }
 
-// 管理者ログイン画面がまだ無いため、暫定的にservice roleキー(サーバー側のみ)で
-// 商品の登録・更新を行う。ログイン機能が完成したらセッション付きクライアント経由の
-// RLSに置き換えることを検討する([[admin-login-sequencing]])。
+// 認証済みユーザー(profiles.store_id)をstore_idの正本として扱う。リクエスト本文からの
+// store_id指定は受け付けず、棚・更新対象商品がこのstore_idに属することを都度確認する。
 export async function POST(request: Request) {
+  const session = await requireAdminSession();
+  if (!session.ok) return adminAuthErrorResponse(session);
+  const { storeId } = session;
+
   const body = (await request.json().catch(() => null)) as RequestBody | null;
 
   if (
@@ -60,6 +64,23 @@ export async function POST(request: Request) {
       return Response.json({ error: "更新対象の商品が指定されていません" }, { status: 400 });
     }
 
+    const { data: existingProduct, error: fetchError } = await supabase
+      .from("products")
+      .select("id, store_id")
+      .eq("id", body.existingProductId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error("[api/admin/product-registration] 更新対象商品の取得に失敗しました", fetchError);
+      return Response.json({ error: "商品の更新に失敗しました" }, { status: 500 });
+    }
+    if (!existingProduct) {
+      return Response.json({ error: "更新対象の商品が見つかりません" }, { status: 404 });
+    }
+    if (existingProduct.store_id !== storeId) {
+      return Response.json({ error: "他店舗の商品は更新できません" }, { status: 403 });
+    }
+
     const { error } = await supabase
       .from("products")
       .update({
@@ -71,21 +92,35 @@ export async function POST(request: Request) {
       .eq("id", body.existingProductId);
 
     if (error) {
-      const message = error.code === "23505" ? "この商品バーコードは既に登録されています。" : error.message;
-      return Response.json({ error: "商品の更新に失敗しました: " + message }, { status: 400 });
+      if (error.code === "23505") {
+        return Response.json({ error: "この商品バーコードは既に登録されています。" }, { status: 409 });
+      }
+      return Response.json({ error: "商品の更新に失敗しました: " + error.message }, { status: 400 });
     }
 
     await upsertBarcodeLookupCache(supabase, body.barcode.trim(), body.name.trim(), body.description.trim());
     return Response.json({ ok: true });
   }
 
-  const { data: store, error: storeError } = await supabase.from("stores").select("id").limit(1).single();
-  if (storeError || !store) {
-    return Response.json({ error: "店舗情報の取得に失敗しました" }, { status: 500 });
+  const { data: shelf, error: shelfError } = await supabase
+    .from("shelves")
+    .select("id, store_id")
+    .eq("id", body.shelfId)
+    .maybeSingle();
+
+  if (shelfError) {
+    console.error("[api/admin/product-registration] 棚情報の取得に失敗しました", shelfError);
+    return Response.json({ error: "商品の登録に失敗しました" }, { status: 500 });
+  }
+  if (!shelf) {
+    return Response.json({ error: "指定された棚が見つかりません" }, { status: 404 });
+  }
+  if (shelf.store_id !== storeId) {
+    return Response.json({ error: "他店舗の棚には登録できません" }, { status: 403 });
   }
 
   const { error: insertError } = await supabase.from("products").insert({
-    store_id: store.id,
+    store_id: storeId,
     shelf_id: body.shelfId,
     barcode: body.barcode.trim(),
     name: body.name.trim(),
@@ -94,8 +129,10 @@ export async function POST(request: Request) {
   });
 
   if (insertError) {
-    const message = insertError.code === "23505" ? "この商品バーコードは既に登録されています。" : insertError.message;
-    return Response.json({ error: "商品の登録に失敗しました: " + message }, { status: 400 });
+    if (insertError.code === "23505") {
+      return Response.json({ error: "この商品バーコードは既に登録されています。" }, { status: 409 });
+    }
+    return Response.json({ error: "商品の登録に失敗しました: " + insertError.message }, { status: 400 });
   }
 
   await upsertBarcodeLookupCache(supabase, body.barcode.trim(), body.name.trim(), body.description.trim());
