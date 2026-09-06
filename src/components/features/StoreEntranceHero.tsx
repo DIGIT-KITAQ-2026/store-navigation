@@ -1,9 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import SearchSuggestions from "@/components/ui/SearchSuggestions";
 import ImageSearchButton from "@/components/ui/ImageSearchButton";
 import AttachedImageChip from "@/components/ui/AttachedImageChip";
 import VoiceSearchButton from "@/components/ui/VoiceSearchButton";
@@ -26,10 +25,6 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
   const touchStartYRef = useRef<number | null>(null);
   const touchStartAtTopRef = useRef(false);
 
-  const suggestions = useMemo(
-    () => [t.hero.suggestion1, t.hero.suggestion2, t.hero.suggestion3, t.hero.suggestion4],
-    [t]
-  );
   const [descriptionLine1, descriptionLine2] = t.hero.description.split("\n");
 
   const openCard = () => setIsOpen(true);
@@ -144,12 +139,12 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
       {/* 背景レイヤー: 店舗写真+オーバーレイ。カード展開中もDOMから外さない */}
       <div className="store-hero-bg pointer-events-none absolute inset-0 z-0" aria-hidden="true">
         <Image
-          src="/images/design-reference/store-hero-generated.png"
+          src="/images/design-reference/store-hero-realistic-navigation.png"
           alt={storeName}
           fill
           priority
           sizes="100vw"
-          className="store-hero-bg-image absolute inset-0 object-cover object-[58%_65%] md:object-[center_58%]"
+          className="store-hero-bg-image absolute inset-0 object-cover object-[82%_50%] md:object-[64%_55%]"
         />
         <div className="store-hero-overlay-left absolute inset-0" />
         <div className="store-hero-overlay-bottom absolute inset-0" />
@@ -218,7 +213,7 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
             <span aria-hidden="true" className="store-search-handle" />
           </button>
 
-          <div className="store-search-card-content mx-auto flex w-full max-w-2xl flex-1 flex-col items-center gap-6 px-4 text-center md:max-w-4xl">
+          <div className="store-search-card-content mx-auto flex w-full max-w-2xl flex-1 flex-col items-center gap-6 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] text-center md:max-w-4xl">
             <form
               method="GET"
               action="/search"
@@ -292,9 +287,6 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
               <span className="text-primary">{t.hero.headingLine2}</span>
             </h2>
             <p className="mt-1 text-xs text-on-surface-variant md:text-base">{t.hero.subDescription}</p>
-            <div className="w-full pb-[max(2rem,env(safe-area-inset-bottom))]">
-              <SearchSuggestions suggestions={suggestions} />
-            </div>
           </div>
         </div>
       </div>
