@@ -20,6 +20,12 @@ const menuItems = [
     description: "登録済みの商品を検索・確認します",
     icon: "inventory_2",
   },
+  {
+    href: "/admin/inventory",
+    label: "棚卸しCSVを取り込む",
+    description: "棚卸しCSVを検証してからまとめて登録します",
+    icon: "fact_check",
+  },
 ];
 
 export default function AdminDashboardPage() {

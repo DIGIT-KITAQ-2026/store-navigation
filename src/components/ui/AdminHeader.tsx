@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AdminLogoutButton } from "@/components/ui/AdminLogoutButton";
 
-type AdminNavKey = "menu" | "products" | "new" | "delete";
+type AdminNavKey = "menu" | "products" | "new" | "delete" | "inventory";
 
 type AdminHeaderProps = {
   title: string;
@@ -20,6 +20,7 @@ const NAV_ITEMS: { key: AdminNavKey; href: string; label: string; icon: string }
   { key: "products", href: "/admin/products", label: "商品一覧", icon: "inventory_2" },
   { key: "new", href: "/admin/products/new", label: "商品登録", icon: "add_circle" },
   { key: "delete", href: "/admin/products/delete", label: "商品削除", icon: "remove_circle" },
+  { key: "inventory", href: "/admin/inventory", label: "棚卸し", icon: "fact_check" },
 ];
 
 /**

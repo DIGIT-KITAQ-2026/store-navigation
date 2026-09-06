@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import BarcodeScannerView from "@/components/features/BarcodeScannerView";
 import { ZONE_LABELS, type LocationCode } from "@/lib/shelfZones";
 
@@ -22,6 +22,8 @@ interface ShelfInfo {
   id: string;
   locationCode: LocationCode;
   zoneName: string;
+  /** この棚位置(Shelf_01〜08)自体に設定済みのカテゴリ。未設定の棚も存在するためnull許容 */
+  categoryId: string | null;
 }
 
 interface ExistingProduct {
@@ -29,16 +31,31 @@ interface ExistingProduct {
   name: string;
   barcode: string;
   description: string;
+  categoryId: string | null;
 }
 
 interface ShelfLookupResponse {
   shelf: {
     id: string;
     locationCode: string | null;
+    categoryId: string | null;
     product: ExistingProduct | null;
   } | null;
   error?: string;
 }
+
+interface CategoryOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface CategoryListResponse {
+  categories?: CategoryOption[];
+  error?: string;
+}
+
+type CategoriesStatus = "loading" | "ready" | "error";
 
 // 商品登録・更新の一連の流れ(棚バーコード特定→商品バーコード→商品名/説明→保存)。
 // 棚バーコードは事前登録済みのものだけを対象とし、その場での新規棚作成は行わない。
@@ -61,8 +78,44 @@ export default function ProductRegistrationFlow() {
   const [productBarcode, setProductBarcode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [lookupStatus, setLookupStatus] = useState<LookupStatus>("idle");
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [categoriesStatus, setCategoriesStatus] = useState<CategoriesStatus>("loading");
+
+  // fetch実行のみを行い、setStateは非同期コールバック内でのみ呼ぶ(エフェクト内からの
+  // 直接呼び出しを許容するため。SearchScreen.tsxのexecuteSearchと同じ考え方)
+  function fetchCategories() {
+    fetch("/api/admin/categories")
+      .then(async (response) => {
+        const body: CategoryListResponse = await response.json();
+        if (!response.ok || !body.categories) {
+          setCategoriesStatus("error");
+          return;
+        }
+        setCategories(body.categories);
+        setCategoriesStatus("ready");
+      })
+      .catch(() => {
+        setCategoriesStatus("error");
+      });
+  }
+
+  // 再読み込みボタン用。「loading」表示への切り替えをここで明示する(初回はcategoriesStatusの
+  // 初期値が既に"loading"のため、effect側では直接setStateせずfetchCategories()だけを呼ぶ)
+  function loadCategories() {
+    setCategoriesStatus("loading");
+    fetchCategories();
+  }
+
+  // カテゴリ一覧は自由入力を避けるため必ずAPIから取得する。取得に失敗した場合は
+  // カテゴリを選べない=登録できない状態になるが、誤ったカテゴリでの登録を防ぐため
+  // 安全側に倒し、再読み込みできるようにする(details画面のエラー表示・再試行ボタン)
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   async function handleShelfScan(code: string) {
     setError(null);
@@ -87,7 +140,8 @@ export default function ProductRegistrationFlow() {
       return;
     }
 
-    setShelf({ id: body.shelf.id, locationCode, zoneName: ZONE_LABELS[locationCode] });
+    const shelfCategoryId = body.shelf.categoryId;
+    setShelf({ id: body.shelf.id, locationCode, zoneName: ZONE_LABELS[locationCode], categoryId: shelfCategoryId });
 
     if (body.shelf.product) {
       setExistingProduct(body.shelf.product);
@@ -95,6 +149,9 @@ export default function ProductRegistrationFlow() {
       return;
     }
 
+    // 棚位置に設定済みのカテゴリがあれば初期選択にする(変更は可能。不一致のまま保存しようと
+    // した場合は登録API側で409になる)
+    setCategoryId(shelfCategoryId ?? "");
     setMode("create");
     setStep("scan-product");
   }
@@ -106,6 +163,7 @@ export default function ProductRegistrationFlow() {
     setName(existingProduct.name);
     // 説明は引き継がない。スキャンする商品が別物の場合、前の商品の説明が残ったままになるため
     setDescription("");
+    setCategoryId(existingProduct.categoryId ?? shelf?.categoryId ?? "");
     setLookupStatus("idle");
     setStep("scan-product");
   }
@@ -160,7 +218,7 @@ export default function ProductRegistrationFlow() {
 
   function handleDetailsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (name.trim().length === 0 || description.trim().length === 0) return;
+    if (name.trim().length === 0 || description.trim().length === 0 || categoryId.length === 0) return;
     setStep("review");
   }
 
@@ -178,7 +236,7 @@ export default function ProductRegistrationFlow() {
         existingProductId: existingProduct?.id,
         barcode: productBarcode,
         name: name.trim(),
-        category: shelf.zoneName,
+        categoryId,
         description: description.trim(),
       }),
     });
@@ -201,11 +259,14 @@ export default function ProductRegistrationFlow() {
     setProductBarcode("");
     setName("");
     setDescription("");
+    setCategoryId("");
     setLookupStatus("idle");
     setIsGeneratingDescription(false);
     setError(null);
     setStep("scan-shelf");
   }
+
+  const selectedCategoryName = categories.find((category) => category.id === categoryId)?.name ?? "";
 
   return (
     <div className="flex flex-col gap-4">
@@ -297,6 +358,46 @@ export default function ProductRegistrationFlow() {
             )}
           </div>
           <div className="flex flex-col gap-1.5">
+            <label htmlFor="category" className="text-sm font-medium text-on-surface">
+              カテゴリ
+            </label>
+            {categoriesStatus === "error" ? (
+              <div className="flex items-center justify-between gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+                <span>カテゴリ一覧の取得に失敗しました</span>
+                <button
+                  type="button"
+                  onClick={loadCategories}
+                  className="shrink-0 font-semibold text-amber-700 underline"
+                >
+                  再読み込み
+                </button>
+              </div>
+            ) : (
+              <select
+                id="category"
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
+                required
+                disabled={categoriesStatus !== "ready"}
+                className="h-11 rounded-full border border-outline-variant bg-surface px-4 text-sm text-on-surface outline-none focus:border-primary disabled:opacity-60"
+              >
+                <option value="" disabled>
+                  {categoriesStatus === "loading" ? "読み込み中…" : "選択してください"}
+                </option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {shelf.categoryId && categoryId.length > 0 && categoryId !== shelf.categoryId && (
+              <p className="text-xs text-amber-700">
+                この棚に設定されているカテゴリと異なります。保存時にエラーになる場合があります。
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
             <label htmlFor="description" className="text-sm font-medium text-on-surface">
               商品説明(検索用)
             </label>
@@ -320,7 +421,7 @@ export default function ProductRegistrationFlow() {
           </div>
           <button
             type="submit"
-            disabled={isGeneratingDescription}
+            disabled={isGeneratingDescription || categoriesStatus !== "ready" || categoryId.length === 0}
             className="h-11 rounded-full bg-primary text-sm font-bold text-on-primary disabled:opacity-60"
           >
             確認画面へ
@@ -350,7 +451,7 @@ export default function ProductRegistrationFlow() {
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-on-surface-variant">カテゴリ</dt>
-              <dd className="text-right text-on-surface">{shelf.zoneName}</dd>
+              <dd className="text-right text-on-surface">{selectedCategoryName}</dd>
             </div>
             <div className="flex flex-col gap-1">
               <dt className="text-on-surface-variant">説明</dt>

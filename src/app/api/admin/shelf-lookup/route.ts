@@ -23,7 +23,9 @@ export async function GET(request: Request) {
   // 「見つからない」と同じ応答になり、他店舗の棚・商品情報を漏らさない
   const { data, error } = await supabase
     .from("shelves")
-    .select("id, shelf_locations(location_code), products(id, name, barcode, description)")
+    .select(
+      "id, shelf_locations(location_code, category_id, categories(id, name)), products(id, name, barcode, description, category_id)"
+    )
     .eq("barcode", barcode)
     .eq("store_id", storeId)
     .maybeSingle();
@@ -36,16 +38,23 @@ export async function GET(request: Request) {
     return Response.json({ shelf: null });
   }
 
+  const category = data.shelf_locations?.categories ?? null;
+
   return Response.json({
     shelf: {
       id: data.id,
       locationCode: data.shelf_locations?.location_code ?? null,
+      // 棚位置(Shelf_01〜08)自体に紐づくカテゴリ。商品登録画面でのカテゴリ選択の初期値に使う
+      // (選択自体は自由に変更可能。一致しない場合は登録API側で409を返す)
+      categoryId: category?.id ?? null,
+      categoryName: category?.name ?? null,
       product: data.products
         ? {
             id: data.products.id,
             name: data.products.name,
             barcode: data.products.barcode,
             description: data.products.description ?? "",
+            categoryId: data.products.category_id ?? null,
           }
         : null,
     },

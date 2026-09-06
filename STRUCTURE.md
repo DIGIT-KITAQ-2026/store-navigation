@@ -28,6 +28,7 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
 | 商品登録画面 | `src/app/admin/products/new/page.tsx` | `/admin/products/new` |
 | 商品削除画面(棚バーコード→一覧→選択削除) | `src/app/admin/products/delete/page.tsx` | `/admin/products/delete` |
 | 商品一覧画面 | `src/app/admin/products/page.tsx` | `/admin/products` |
+| 棚卸しCSV取込画面(プレビュー→確定) | `src/app/admin/inventory/page.tsx` | `/admin/inventory` |
 
 サーバー側の処理(Claude Agent SDK呼び出し、Supabaseへの書き込みなど)は
 `src/app/api/<機能名>/route.ts` に置く(例: `src/app/api/search/route.ts`)。
@@ -57,6 +58,12 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
 - `src/lib/barcode/` — カメラでのバーコード/QR読み取りの共通処理
 - `src/lib/store-navigation/` — `store-3d/`向けの型・店内レイアウト(ナビゲーショングラフ)・
   経路探索(BFS)のみを持つ。Three.js/3D描画のコードはここには置かない(経路計算と3D描画の分離)
+- `src/lib/category/` — カテゴリDB(categories/category_keywords)関連の共通処理(正規化・
+  キーワード一致・カテゴリ一覧取得)。消費者検索(`aiSearch`と組み合わせて使う)と管理者画面
+  (商品登録のカテゴリ選択)の両方から参照する
+- `src/lib/inventory/` — 棚卸しCSV(`/admin/inventory`)のパース・検証ロジック。CSV文字列を
+  読んでinventory_countsへの保存候補に変換するところまでを持つ(実際の保存は
+  `src/app/api/admin/inventory/*/route.ts`側)
 
 ## (過去経緯)Unity WebGL版について
 
