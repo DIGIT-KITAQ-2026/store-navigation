@@ -10,7 +10,7 @@ interface GuidePanelProps {
   guideMessage: string | null;
   /** 「3D案内を開始」が押され、3D側に経路・矢印・目的地マーカーを表示している状態か */
   guideStarted: boolean;
-  onStartGuide: () => void;
+  onStartGuide?: () => void;
 }
 
 export default function GuidePanel({
@@ -72,7 +72,7 @@ export default function GuidePanel({
         </p>
       )}
 
-      {destinationLabel !== null && (
+      {destinationLabel !== null && onStartGuide && (
         <button
           type="button"
           onClick={onStartGuide}
