@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslations } from "@/lib/i18n/useTranslations";
+import CameraCapture from "@/components/features/CameraCapture";
 
 interface ImageSearchButtonProps {
   onSelectFile: (file: File) => void;
@@ -15,6 +16,9 @@ interface ImageSearchButtonProps {
 
 /**
  * 検索欄の中に置く「+」ボタン。押すと「カメラで検索」「画像を添付」の2択メニューが開く。
+ * 「カメラで検索」はアプリ内の撮影画面(CameraCapture)を開く。以前は
+ * `<input type="file" capture="environment">`でOS側のカメラを呼んでいたが、`capture`は
+ * モバイルでしか効かず、PCではファイル選択画面になってしまうため自前の撮影画面に変えた。
  * 実際の検索実行(fetch・画面遷移)は行わず、選ばれたファイルをonSelectFileで呼び出し元に渡すだけ。
  * 検索欄の角丸枠の左端(left-2)に収まるサイズ(h-9 w-9)を前提に、呼び出し側は
  * 拡大鏡アイコンをleft-12・inputをpl-20程度にずらして使う。
@@ -26,8 +30,8 @@ export default function ImageSearchButton({
 }: ImageSearchButtonProps) {
   const t = useTranslations();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const toggleMenu = () => setIsMenuOpen((value) => !value);
@@ -72,7 +76,10 @@ export default function ImageSearchButton({
           <button
             type="button"
             role="menuitem"
-            onClick={() => cameraInputRef.current?.click()}
+            onClick={() => {
+              setIsMenuOpen(false);
+              setIsCameraOpen(true);
+            }}
             className="flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm text-on-surface transition-colors hover:bg-surface-variant"
           >
             <span className="material-symbols-outlined text-[20px] text-on-surface-variant">photo_camera</span>
@@ -104,15 +111,6 @@ export default function ImageSearchButton({
       </button>
 
       <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileSelected}
-        className="hidden"
-        suppressHydrationWarning
-      />
-      <input
         ref={galleryInputRef}
         type="file"
         accept="image/*"
@@ -120,6 +118,16 @@ export default function ImageSearchButton({
         className="hidden"
         suppressHydrationWarning
       />
+
+      {isCameraOpen && (
+        <CameraCapture
+          onCapture={(file) => {
+            setIsCameraOpen(false);
+            onSelectFile(file);
+          }}
+          onClose={() => setIsCameraOpen(false)}
+        />
+      )}
     </div>
   );
 }

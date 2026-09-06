@@ -62,6 +62,16 @@ const zh: Dictionary = {
     buttonAriaLabel: "以图片搜索(拍照或添加图片)",
     removeAriaLabel: "取消已添加的图片",
   },
+  camera: {
+    title: "拍照搜索",
+    close: "关闭相机",
+    shutter: "拍照",
+    switchCamera: "切换摄像头",
+    starting: "正在启动相机…",
+    unsupported: "此设备或浏览器不支持相机",
+    permissionDenied: "未获得相机使用权限。请检查浏览器设置",
+    captureFailed: "拍照失败，请重试",
+  },
   voiceSearch: {
     stop: "停止语音输入",
     start: "语音搜索",

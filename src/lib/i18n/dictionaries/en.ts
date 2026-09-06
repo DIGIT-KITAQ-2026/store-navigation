@@ -62,6 +62,16 @@ const en: Dictionary = {
     buttonAriaLabel: "Search by image (camera or attachment)",
     removeAriaLabel: "Remove attached image",
   },
+  camera: {
+    title: "Search by camera",
+    close: "Close the camera",
+    shutter: "Take a photo",
+    switchCamera: "Switch camera",
+    starting: "Starting the camera…",
+    unsupported: "This device or browser does not support the camera",
+    permissionDenied: "Camera access is not allowed. Please check your browser settings",
+    captureFailed: "Could not take the photo. Please try again",
+  },
   voiceSearch: {
     stop: "Stop voice input",
     start: "Search by voice",

@@ -62,6 +62,16 @@ const ko: Dictionary = {
     buttonAriaLabel: "이미지로 검색(카메라 또는 이미지 첨부)",
     removeAriaLabel: "첨부한 이미지 취소",
   },
+  camera: {
+    title: "카메라로 검색",
+    close: "카메라 닫기",
+    shutter: "촬영하기",
+    switchCamera: "카메라 전환",
+    starting: "카메라를 시작하는 중입니다…",
+    unsupported: "이 기기 또는 브라우저는 카메라를 지원하지 않습니다",
+    permissionDenied: "카메라 사용이 허용되지 않았습니다. 브라우저 설정을 확인해 주세요",
+    captureFailed: "촬영에 실패했습니다. 다시 시도해 주세요",
+  },
   voiceSearch: {
     stop: "음성 입력 중지",
     start: "음성으로 검색",

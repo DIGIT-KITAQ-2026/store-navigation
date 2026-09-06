@@ -63,6 +63,16 @@ export interface Dictionary {
     buttonAriaLabel: string;
     removeAriaLabel: string;
   };
+  camera: {
+    title: string;
+    close: string;
+    shutter: string;
+    switchCamera: string;
+    starting: string;
+    unsupported: string;
+    permissionDenied: string;
+    captureFailed: string;
+  };
   voiceSearch: {
     stop: string;
     start: string;
@@ -157,6 +167,16 @@ const ja: Dictionary = {
     galleryOption: "画像を添付",
     buttonAriaLabel: "画像で検索(カメラ・画像添付)",
     removeAriaLabel: "添付した画像を取り消す",
+  },
+  camera: {
+    title: "カメラで検索",
+    close: "カメラを閉じる",
+    shutter: "撮影する",
+    switchCamera: "カメラの向きを切り替える",
+    starting: "カメラを起動しています…",
+    unsupported: "この端末・ブラウザはカメラに対応していません",
+    permissionDenied: "カメラの使用が許可されていません。ブラウザの設定を確認してください",
+    captureFailed: "撮影に失敗しました。もう一度お試しください",
   },
   voiceSearch: {
     stop: "音声入力を停止",
