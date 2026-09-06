@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { realisticStoreHref } from "@/lib/store-navigation/realistic-store-ids";
 import StoreNavigation3D from "@/components/store-3d/StoreNavigation3D";
 import GuidePanel from "@/components/features/GuidePanel";
 import { findKnownDestination } from "@/lib/store-navigation/store-layout";
@@ -26,6 +28,7 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
   // 棚未登録・未登録値の場合はnullとなり、3D案内自体を出さない(resolveDestination()の
   // Shelf_01フォールバックには乗せない。実商品を誤って青果へ案内してしまうため)
   const destination = findKnownDestination(product.shelfId);
+  const realisticHref = realisticStoreHref(product.shelfId);
   const destinationLabel = destination ? translateCategory(destination.label, locale) : null;
   // 表示中のロケールから毎回組み立てる(押した瞬間の言語で固定したstateにすると、
   // 案内開始後に言語を切り替えても翻訳されないままになるため)
@@ -70,6 +73,11 @@ export default function NavigateScreen({ product }: NavigateScreenProps) {
           <span className="material-symbols-outlined text-on-surface-variant">arrow_back</span>
         </button>
         <h1 className="text-xl font-bold text-on-surface">{t.navigate.backToSearch}</h1>
+        {process.env.NODE_ENV === "development" && realisticHref && (
+          <Link href={realisticHref} prefetch={false} className="ml-auto text-sm text-teal-700 underline">
+            新店舗で検証（開発用・別カテゴリ配置）
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
