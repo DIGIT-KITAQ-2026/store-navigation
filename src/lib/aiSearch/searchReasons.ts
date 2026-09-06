@@ -19,6 +19,8 @@ interface ReasonTemplates {
   categoryMatch: string;
   /** 商品説明が検索語に一致した */
   descriptionMatch: string;
+  /** カテゴリDB(category_keywords)のキーワードが検索語に一致した */
+  categoryKeywordMatch: string;
 }
 
 const TEMPLATES: Record<Locale, ReasonTemplates> = {
@@ -28,6 +30,7 @@ const TEMPLATES: Record<Locale, ReasonTemplates> = {
     nameMatch: "商品名「{name}」が検索語に一致しました",
     categoryMatch: "カテゴリー「{category}」が検索語に一致しました",
     descriptionMatch: "商品説明が検索語に一致しました",
+    categoryKeywordMatch: "「{keyword}」というキーワードから「{categoryName}」カテゴリの商品として見つかりました",
   },
   en: {
     semantic: 'Found "{name}" as a product related to "{query}"',
@@ -35,6 +38,7 @@ const TEMPLATES: Record<Locale, ReasonTemplates> = {
     nameMatch: 'The product name "{name}" matches your search',
     categoryMatch: 'The category "{category}" matches your search',
     descriptionMatch: "The product description matches your search",
+    categoryKeywordMatch: 'Found in the "{categoryName}" category via the keyword "{keyword}"',
   },
   zh: {
     semantic: "找到了与“{query}”相关的商品“{name}”",
@@ -42,6 +46,7 @@ const TEMPLATES: Record<Locale, ReasonTemplates> = {
     nameMatch: "商品名称“{name}”与搜索词一致",
     categoryMatch: "类别“{category}”与搜索词一致",
     descriptionMatch: "商品说明与搜索词一致",
+    categoryKeywordMatch: "根据关键词“{keyword}”，在“{categoryName}”类别中找到了该商品",
   },
   ko: {
     // 韓国語は変数の直後に付く助詞が語尾で変わるため、助詞を変数の後ろに置かない書き方にしている
@@ -50,6 +55,7 @@ const TEMPLATES: Record<Locale, ReasonTemplates> = {
     nameMatch: "상품명이 검색어와 일치합니다: '{name}'",
     categoryMatch: "카테고리가 검색어와 일치합니다: '{category}'",
     descriptionMatch: "상품 설명이 검색어와 일치합니다",
+    categoryKeywordMatch: "키워드 '{keyword}'로 '{categoryName}' 카테고리에서 찾은 상품입니다",
   },
 };
 

@@ -11,6 +11,7 @@ function toShelfNumber(locationCode: string): string {
 export async function fetchStoreCatalog(supabase: SupabaseClient<Database>): Promise<{
   catalog: CatalogItem[];
   locationCodeByProductId: Map<string, string>;
+  categoryIdByProductId: Map<string, string>;
 } | null> {
   const { data: store, error: storeError } = await supabase
     .from("stores")
@@ -22,7 +23,7 @@ export async function fetchStoreCatalog(supabase: SupabaseClient<Database>): Pro
 
   const { data: products, error: productsError } = await supabase
     .from("products")
-    .select("id, name, category, description, shelves(shelf_locations(location_code))")
+    .select("id, name, category, category_id, description, shelves(shelf_locations(location_code))")
     .eq("store_id", store.id);
 
   if (productsError) return null;
@@ -35,12 +36,14 @@ export async function fetchStoreCatalog(supabase: SupabaseClient<Database>): Pro
   }));
 
   const locationCodeByProductId = new Map<string, string>();
+  const categoryIdByProductId = new Map<string, string>();
   for (const product of products ?? []) {
     const locationCode = product.shelves?.shelf_locations?.location_code;
     if (locationCode) locationCodeByProductId.set(product.id, locationCode);
+    if (product.category_id) categoryIdByProductId.set(product.id, product.category_id);
   }
 
-  return { catalog, locationCodeByProductId };
+  return { catalog, locationCodeByProductId, categoryIdByProductId };
 }
 
 /** AIの一致結果を、実在するカタログ商品・棚位置とだけ突き合わせてUI表示用の形に変換する */

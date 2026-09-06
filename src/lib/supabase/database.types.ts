@@ -35,6 +35,157 @@ export type Database = {
         }
         Relationships: []
       }
+      categories: {
+        Row: {
+          code: string
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_order: number
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      category_keywords: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          keyword: string
+          normalized_keyword: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          keyword: string
+          normalized_keyword: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          keyword?: string
+          normalized_keyword?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_keywords_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_counts: {
+        Row: {
+          actual_stock: number
+          book_stock: number | null
+          category_id: string | null
+          cost_price: number | null
+          counted_at: string
+          created_at: string
+          id: string
+          jan_code: string | null
+          product_id: string | null
+          selling_price: number | null
+          shelf_location_id: string | null
+          sku: string
+          store_id: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_stock: number
+          book_stock?: number | null
+          category_id?: string | null
+          cost_price?: number | null
+          counted_at: string
+          created_at?: string
+          id?: string
+          jan_code?: string | null
+          product_id?: string | null
+          selling_price?: number | null
+          shelf_location_id?: string | null
+          sku: string
+          store_id: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_stock?: number
+          book_stock?: number | null
+          category_id?: string | null
+          cost_price?: number | null
+          counted_at?: string
+          created_at?: string
+          id?: string
+          jan_code?: string | null
+          product_id?: string | null
+          selling_price?: number | null
+          shelf_location_id?: string | null
+          sku?: string
+          store_id?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_counts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_shelf_location_id_fkey"
+            columns: ["shelf_location_id"]
+            isOneToOne: false
+            referencedRelation: "shelf_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_translations: {
         Row: {
           description: string
@@ -68,6 +219,7 @@ export type Database = {
         Row: {
           barcode: string
           category: string | null
+          category_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -78,6 +230,7 @@ export type Database = {
         Insert: {
           barcode: string
           category?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -88,6 +241,7 @@ export type Database = {
         Update: {
           barcode?: string
           category?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -96,6 +250,13 @@ export type Database = {
           store_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_shelf_id_fkey"
             columns: ["shelf_id"]
@@ -140,6 +301,7 @@ export type Database = {
       }
       shelf_locations: {
         Row: {
+          category_id: string | null
           created_at: string
           id: string
           location_code: string
@@ -149,6 +311,7 @@ export type Database = {
           unity_position_z: number
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
           id?: string
           location_code: string
@@ -158,6 +321,7 @@ export type Database = {
           unity_position_z?: number
         }
         Update: {
+          category_id?: string | null
           created_at?: string
           id?: string
           location_code?: string
@@ -167,6 +331,13 @@ export type Database = {
           unity_position_z?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "shelf_locations_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shelf_locations_store_id_fkey"
             columns: ["store_id"]
