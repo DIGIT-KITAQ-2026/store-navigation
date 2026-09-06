@@ -1,6 +1,10 @@
 import { generateProductDescription } from "@/lib/aiSearch/generateProductDescription";
+import { requireAdminSession, adminAuthErrorResponse } from "@/lib/supabase/adminAuth";
 
 export async function POST(request: Request) {
+  const session = await requireAdminSession();
+  if (!session.ok) return adminAuthErrorResponse(session);
+
   const body = (await request.json().catch(() => null)) as { name?: string } | null;
   const name = body?.name?.trim();
 

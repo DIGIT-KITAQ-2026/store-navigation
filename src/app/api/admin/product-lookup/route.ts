@@ -1,10 +1,13 @@
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { requireAdminSession, adminAuthErrorResponse } from "@/lib/supabase/adminAuth";
 
 interface YahooItemSearchResponse {
   hits?: { name?: string }[];
 }
 
-// 商品バーコード(JANコード)から商品名(・分かれば説明)を引く。
+// 商品バーコード(JANコード)から商品名(・分かれば説明)を引く。管理者専用API。
+// `barcode_lookup_cache`・Yahoo!ショッピングの検索結果はいずれも店舗に紐付かない
+// 共有データのため、store_idによる絞り込みは行わない(認証済み管理者であれば参照可)。
 // 1. まず`barcode_lookup_cache`(過去に登録・確定した内容)を優先して参照する。
 //    Yahoo!ショッピングの検索結果は梱包・販促情報混じりの不自然な名前になりがちなため、
 //    一度スタッフが手直しした内容があればそちらを毎回使い回す。
@@ -12,6 +15,9 @@ interface YahooItemSearchResponse {
 // appid未設定/該当なし/API障害時はすべて{ name: null }を返し、フロント側は
 // エラー扱いせず手入力にフォールバックできるようにする(登録自体はブロックしない)。
 export async function GET(request: Request) {
+  const session = await requireAdminSession();
+  if (!session.ok) return adminAuthErrorResponse(session);
+
   const barcode = new URL(request.url).searchParams.get("barcode")?.trim();
   if (!barcode) {
     return Response.json({ error: "barcodeは必須です" }, { status: 400 });
