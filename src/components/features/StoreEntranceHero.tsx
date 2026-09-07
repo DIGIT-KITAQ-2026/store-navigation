@@ -45,15 +45,25 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
     router.push(`/search?q=${encodeURIComponent(text)}`);
   };
 
-  // 画像検索は、テキスト検索(ネイティブGET送信で/search?q=...に遷移)と同じく、
-  // まず検索結果画面へ遷移してから実際の検索を行う。Fileはメモリ上で結果画面へ受け渡す
+  // テキスト・画像とも、まず検索結果画面へ遷移してから実際の検索を行う。
+  // 画像のFileはメモリ上で結果画面へ受け渡す。
+  //
+  // テキスト検索は以前フォームのネイティブGET送信に任せていたが、それだとページ全体が
+  // 読み込み直され、店舗→支店→商品の進行状態(StoreFlowProvider)が失われる。
+  // 結果画面から戻ったときに商品検索ではなく店舗検索へ送り返されてしまうため、
+  // 音声・画像検索と同じクライアント側遷移に揃えた。
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     if (attachedFile) {
-      event.preventDefault();
       setPendingImageSearchFile(attachedFile);
       router.push(`/search?q=${encodeURIComponent(IMAGE_SEARCH_QUERY_LABEL)}`);
+      return;
     }
-    // 画像未添付の場合はネイティブのGET送信で/search?q=...に遷移させる
+
+    const trimmed = query.trim();
+    if (trimmed.length === 0) return;
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   };
 
   const showAttachedChip = attachedFile !== null;

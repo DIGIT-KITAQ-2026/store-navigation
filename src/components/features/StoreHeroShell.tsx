@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslations } from "@/lib/i18n/useTranslations";
+import { useStoreFlow } from "@/lib/storeFlowState";
 
 interface StoreHeroShellProps {
   /** 背景写真の代替テキスト */
@@ -24,7 +25,9 @@ interface StoreHeroShellProps {
  */
 export default function StoreHeroShell({ imageAlt, ctaLabel, openLabel, children }: StoreHeroShellProps) {
   const t = useTranslations();
-  const [isOpen, setIsOpen] = useState(false);
+  // 開閉状態は消費者画面の共通レイアウトが持つ。店舗→支店→商品と画面が変わっても
+  // カードが閉じずに中身だけ切り替わるようにするため(StoreFlowProvider参照)
+  const { isOpen, setIsOpen } = useStoreFlow();
   const rootRef = useRef<HTMLElement>(null);
   const cardInnerRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
@@ -36,7 +39,7 @@ export default function StoreHeroShell({ imageAlt, ctaLabel, openLabel, children
   const openText = openLabel ?? t.hero.openCard;
 
   const openCard = () => setIsOpen(true);
-  const toggleCard = () => setIsOpen((value) => !value);
+  const toggleCard = () => setIsOpen(!isOpen);
 
   // Escapeキーで検索カードを閉じる
   useEffect(() => {
@@ -47,7 +50,7 @@ export default function StoreHeroShell({ imageAlt, ctaLabel, openLabel, children
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, setIsOpen]);
 
   // 下方向ホイールで開く、カード内が先頭のときのみ上方向ホイールで閉じる
   useEffect(() => {
@@ -73,7 +76,7 @@ export default function StoreHeroShell({ imageAlt, ctaLabel, openLabel, children
 
     root.addEventListener("wheel", handleWheel, { passive: false });
     return () => root.removeEventListener("wheel", handleWheel);
-  }, [isOpen]);
+  }, [isOpen, setIsOpen]);
 
   // スマホの上スワイプで開く、カード内が先頭のときのみ下スワイプで閉じる
   useEffect(() => {
@@ -109,7 +112,7 @@ export default function StoreHeroShell({ imageAlt, ctaLabel, openLabel, children
       root.removeEventListener("touchstart", handleTouchStart);
       root.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [isOpen]);
+  }, [isOpen, setIsOpen]);
 
   return (
     <section

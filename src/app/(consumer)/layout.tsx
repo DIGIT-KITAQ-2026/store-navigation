@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import StoreHeader from "@/components/ui/StoreHeader";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
+import { StoreFlowProvider } from "@/lib/storeFlowState";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isLocale } from "@/lib/i18n/locales";
 
 export default async function ConsumerLayout({ children }: { children: React.ReactNode }) {
@@ -10,10 +11,12 @@ export default async function ConsumerLayout({ children }: { children: React.Rea
 
   return (
     <LocaleProvider initialLocale={initialLocale}>
-      <div className="flex min-h-full flex-col">
-        <StoreHeader />
-        <div className="flex-1">{children}</div>
-      </div>
+      <StoreFlowProvider>
+        <div className="flex min-h-full flex-col">
+          <StoreHeader />
+          <div className="flex-1">{children}</div>
+        </div>
+      </StoreFlowProvider>
     </LocaleProvider>
   );
 }
