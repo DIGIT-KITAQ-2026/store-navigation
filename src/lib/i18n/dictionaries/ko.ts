@@ -35,7 +35,6 @@ const ko: Dictionary = {
     resultsHeading: "'{query}' 검색 결과",
     resultsHeadingEmpty: "검색 결과",
     resultsListAriaLabel: "검색 결과 목록",
-    heroImageAlt: "수채화로 그린 슈퍼마켓",
     searchAgainPlaceholder: "또 찾으시는 것이 있나요?",
     submitAriaLabel: "검색하기",
     suggestionAriaLabel: "'{suggestion}' 검색하기",
@@ -55,6 +54,20 @@ const ko: Dictionary = {
   },
   navigate: {
     backToSearch: "검색 결과로 돌아가기",
+  },
+  storeSelect: {
+    chainCta: "매장 찾기",
+    chainOpenCard: "매장 찾기(검색 카드 열기)",
+    branchCta: "지점 찾기",
+    branchOpenCard: "지점 찾기(검색 카드 열기)",
+    chainHeading: "매장 선택",
+    chainDescription: "찾으시는 매장을 선택해 주세요",
+    chainPlaceholder: "매장명 입력",
+    chainEmpty: "조건에 맞는 매장을 찾지 못했습니다",
+    branchHeading: "{chain} 지점 선택",
+    branchDescription: "찾으시는 지점을 선택해 주세요",
+    branchPlaceholder: "지점명 입력",
+    branchEmpty: "조건에 맞는 지점을 찾지 못했습니다",
   },
   imageSearch: {
     cameraOption: "카메라로 검색",

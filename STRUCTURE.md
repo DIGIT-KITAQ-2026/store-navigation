@@ -18,7 +18,9 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
 
 | 画面(仕様書.mdの画面一覧) | 置き場所 | URL |
 |---|---|---|
-| 店舗トップ画面(QR読み取り後) | `src/app/(consumer)/page.tsx` | `/` |
+| 店舗(チェーン)検索画面 | `src/app/(consumer)/page.tsx` | `/` |
+| 支店検索画面 | `src/app/(consumer)/stores/[chainId]/page.tsx` | `/stores/:chainId` |
+| 店舗トップ画面(選んだ支店での商品検索) | `src/app/(consumer)/stores/[chainId]/[branchId]/page.tsx` | `/stores/:chainId/:branchId` |
 | AI検索結果画面(商品/マップ/リストタブ) | `src/app/(consumer)/search/page.tsx` | `/search` |
 | 3D店内ナビゲーション画面(Three.js/React Three Fiber) | `src/app/(consumer)/navigate/[productId]/page.tsx` | `/navigate/:productId` |
 | ↑の商品が見つからない場合の表示 | `src/app/(consumer)/navigate/[productId]/not-found.tsx` | (同上、`notFound()`呼び出し時) |
@@ -53,6 +55,9 @@ Next.js App Router なので、`src/app/` 以下のフォルダ = URLパスに�
   当初`src/lib/claude/`にAgent SDK(OAuth認証)経由の実装を置く想定だったが、利用ポリシー上の
   制約で方式変更したため`aiSearch/`に置き直している(`docs/仕様書.md`の「AI連携仕様」参照)。
   `src/lib/claude/`は未使用の空フォルダなので新規実装をここに置かないこと
+- `src/lib/stores/` — 店舗(チェーン)と支店の一覧(`storeDirectory.ts`)。商品検索の前段の
+  「店舗 → 支店」の絞り込みに使う。Supabaseは単一デモ店舗のスコープでチェーン/支店を持たないため、
+  この段階の情報だけアプリ内に置いている(DBへ移す場合はこのファイルの関数を差し替える)
 - `src/lib/voice/` — 音声入力。ブラウザ側の録音・PCM変換(`useVoiceSearch.ts`)と、
   サーバー側でWhisperを動かす文字起こし(`transcribeAudio.ts`)。APIルートは`src/app/api/transcribe/`
 - `src/lib/barcode/` — カメラでのバーコード/QR読み取りの共通処理

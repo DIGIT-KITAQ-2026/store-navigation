@@ -35,7 +35,6 @@ const zh: Dictionary = {
     resultsHeading: "“{query}”的搜索结果",
     resultsHeadingEmpty: "搜索结果",
     resultsListAriaLabel: "搜索结果列表",
-    heroImageAlt: "水彩风格的超市插画",
     searchAgainPlaceholder: "还想找些什么吗？",
     submitAriaLabel: "搜索",
     suggestionAriaLabel: "搜索“{suggestion}”",
@@ -55,6 +54,20 @@ const zh: Dictionary = {
   },
   navigate: {
     backToSearch: "返回搜索结果",
+  },
+  storeSelect: {
+    chainCta: "查找店铺",
+    chainOpenCard: "查找店铺（打开搜索卡片）",
+    branchCta: "查找分店",
+    branchOpenCard: "查找分店（打开搜索卡片）",
+    chainHeading: "选择店铺",
+    chainDescription: "请选择您要找的店铺",
+    chainPlaceholder: "输入店铺名称",
+    chainEmpty: "未找到符合条件的店铺",
+    branchHeading: "选择{chain}的分店",
+    branchDescription: "请选择您要找的分店",
+    branchPlaceholder: "输入分店名称",
+    branchEmpty: "未找到符合条件的分店",
   },
   imageSearch: {
     cameraOption: "用相机搜索",

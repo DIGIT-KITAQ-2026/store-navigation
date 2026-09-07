@@ -36,7 +36,6 @@ export interface Dictionary {
     resultsHeading: string;
     resultsHeadingEmpty: string;
     resultsListAriaLabel: string;
-    heroImageAlt: string;
     searchAgainPlaceholder: string;
     submitAriaLabel: string;
     suggestionAriaLabel: string;
@@ -56,6 +55,20 @@ export interface Dictionary {
   };
   navigate: {
     backToSearch: string;
+  };
+  storeSelect: {
+    chainCta: string;
+    chainOpenCard: string;
+    branchCta: string;
+    branchOpenCard: string;
+    chainHeading: string;
+    chainDescription: string;
+    chainPlaceholder: string;
+    chainEmpty: string;
+    branchHeading: string;
+    branchDescription: string;
+    branchPlaceholder: string;
+    branchEmpty: string;
   };
   imageSearch: {
     cameraOption: string;
@@ -141,7 +154,6 @@ const ja: Dictionary = {
     resultsHeading: "「{query}」の検索結果",
     resultsHeadingEmpty: "検索結果",
     resultsListAriaLabel: "検索結果一覧",
-    heroImageAlt: "水彩で描かれたスーパーマーケット",
     searchAgainPlaceholder: "他に探したいものはありますか？",
     submitAriaLabel: "検索する",
     suggestionAriaLabel: "「{suggestion}」で検索する",
@@ -161,6 +173,20 @@ const ja: Dictionary = {
   },
   navigate: {
     backToSearch: "検索結果に戻る",
+  },
+  storeSelect: {
+    chainCta: "店舗を探す",
+    chainOpenCard: "店舗を探す(検索カードを開く)",
+    branchCta: "支店を探す",
+    branchOpenCard: "支店を探す(検索カードを開く)",
+    chainHeading: "店舗を選ぶ",
+    chainDescription: "お探しの店舗を選んでください",
+    chainPlaceholder: "店舗名を入力",
+    chainEmpty: "該当する店舗が見つかりませんでした",
+    branchHeading: "{chain}の支店を選ぶ",
+    branchDescription: "お探しの支店を選んでください",
+    branchPlaceholder: "支店名を入力",
+    branchEmpty: "該当する支店が見つかりませんでした",
   },
   imageSearch: {
     cameraOption: "カメラで検索",
