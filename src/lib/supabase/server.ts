@@ -3,6 +3,8 @@ import type { Database } from "./database.types";
 import type { Product } from "@/types/product";
 import { translateProduct } from "@/lib/translate/productTranslation";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { fetchLatestStockForStore, resolveLatestStock } from "@/lib/inventory/latestStock";
+import { buildStockInfo } from "@/lib/inventory/stockStatus";
 
 /**
  * サーバーサイド専用のSupabaseクライアント。RLSをバイパスするService Role Keyを使うため、
@@ -36,13 +38,18 @@ export async function getProductWithShelfLocation(
 
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, category, description, shelves(shelf_locations(location_code))")
+    .select("id, name, category, description, store_id, shelves(shelf_locations(id, location_code))")
     .eq("id", productId)
     .maybeSingle();
 
   if (error || !data) return null;
 
-  const locationCode = data.shelves?.shelf_locations?.location_code ?? null;
+  const shelfLocation = data.shelves?.shelf_locations;
+  const locationCode = shelfLocation?.location_code ?? null;
+
+  const stockTarget = { productId: data.id, shelfLocationId: shelfLocation?.id ?? null };
+  const stockMaps = await fetchLatestStockForStore(supabase, data.store_id, [stockTarget]);
+  const stock = buildStockInfo(resolveLatestStock(stockTarget, stockMaps));
 
   const product: Product = {
     id: data.id,
@@ -51,6 +58,7 @@ export async function getProductWithShelfLocation(
     shelfId: locationCode,
     shelfNumber: locationCode ? locationCode.replace(/^Shelf_/, "") : null,
     description: data.description ?? "",
+    stock,
   };
 
   return translateProduct(product, locale);

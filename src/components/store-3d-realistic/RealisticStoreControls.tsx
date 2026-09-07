@@ -6,6 +6,7 @@ import { REALISTIC_CATEGORIES, REALISTIC_SHELF_IDS, type RealisticShelfId } from
 import type { MovementInput } from "@/lib/store-navigation/types";
 import { PREVIEW_LOCK_ID } from "./PreviewController";
 import styles from "./RealisticStoreControls.module.css";
+import { STOCK_STATUS_SYMBOLS, STOCK_STATUS_LABELS_JA, type StockInfo } from "@/lib/inventory/stockStatus";
 
 export type Playback = "idle" | "playing" | "paused" | "arrived" | "blocked";
 const accents: Record<RealisticShelfId, string> = {
@@ -23,12 +24,14 @@ interface Props {
   selected: RealisticShelfId | null; mode: "manual" | "auto"; playback: Playback;
   ready: boolean; switching: boolean; mobile: boolean; locked: boolean; pointerLock: boolean;
   movement: RefObject<MovementInput>;
+  /** 案内先商品の在庫状態。selectedが案内対象の売り場と異なる場合はnull(古い情報を出さないため)。 */
+  stock?: StockInfo | null;
   onSelect: (id: string) => void; onManual: () => void; onAuto: () => void;
   onStart: () => void; onPause: () => void; onReplay: () => void; onEntrance: () => void;
 }
 
 export default function RealisticStoreControls(props: Props) {
-  const { selected, mode, playback, ready, switching, mobile, locked, pointerLock, movement,
+  const { selected, mode, playback, ready, switching, mobile, locked, pointerLock, movement, stock,
     onSelect, onManual, onAuto, onStart, onPause, onReplay, onEntrance } = props;
   const selectId = useId();
   const select = useRef<HTMLSelectElement>(null);
@@ -46,6 +49,13 @@ export default function RealisticStoreControls(props: Props) {
         <p className={styles.label}>目的地</p>
         <p className={styles.category}>{category ?? "未選択"}</p>
         <p className={styles.shelf}>{selected ?? "売り場を選択"}</p>
+        {stock && (
+          <p className={styles.stock} data-kind={stock.kind}>
+            <span aria-hidden>{STOCK_STATUS_SYMBOLS[stock.kind]}</span>
+            {STOCK_STATUS_LABELS_JA[stock.kind]}
+            {stock.kind !== "unknown" && ` ${stock.actualStock ?? 0}${stock.unit ?? ""}`}
+          </p>
+        )}
       </section>
       <div className={styles.modes} role="group" aria-label="操作モード">
         <button type="button" disabled={unavailable} aria-pressed={mode === "manual"} onClick={onManual}

@@ -52,6 +52,15 @@ const ko: Dictionary = {
     guideShowing: "3D 안내 표시 중",
     guideStart: "3D 안내 시작",
     guideMessage: "3D 매장 지도에서 {label}까지의 안내를 표시합니다",
+    actionNavigateToShelf: "이 매대로 안내",
+    actionCheckShelf: "매장에서 확인",
+  },
+  stock: {
+    availableLabel: "재고 있음",
+    outOfStockLabel: "재고 없음",
+    unknownLabel: "재고 정보 없음",
+    quantity: "재고 {count}{unit}",
+    lastCounted: "최종 확인 {datetime}",
   },
   navigate: {
     backToSearch: "검색 결과로 돌아가기",

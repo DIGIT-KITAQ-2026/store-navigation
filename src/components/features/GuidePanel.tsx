@@ -2,6 +2,8 @@
 
 import type { Product } from "@/types/product";
 import { useTranslations, format } from "@/lib/i18n/useTranslations";
+import StockBadge from "@/components/ui/StockBadge";
+import { formatCountedAtUtc } from "@/lib/inventory/stockStatus";
 
 interface GuidePanelProps {
   product: Product;
@@ -21,6 +23,8 @@ export default function GuidePanel({
   onStartGuide,
 }: GuidePanelProps) {
   const t = useTranslations();
+  const { stock } = product;
+  const guideActionLabel = stock.kind === "available" ? t.guide.actionNavigateToShelf : t.guide.actionCheckShelf;
 
   return (
     <div className="w-full rounded-xl border border-outline-variant bg-surface p-5 shadow-xl">
@@ -42,6 +46,20 @@ export default function GuidePanel({
           {format(t.guide.shelfId, { shelfId: product.shelfId ?? "" })}
         </span>
       )}
+
+      <div className="mt-3 flex flex-col gap-1">
+        <StockBadge stock={stock} />
+        {stock.kind !== "unknown" && (
+          <p className="text-sm text-on-surface-variant">
+            {format(t.stock.quantity, { count: stock.actualStock ?? 0, unit: stock.unit ?? "" })}
+          </p>
+        )}
+        {stock.countedAt !== null && (
+          <p className="text-xs text-on-surface-variant">
+            {format(t.stock.lastCounted, { datetime: formatCountedAtUtc(stock.countedAt) })}
+          </p>
+        )}
+      </div>
 
       {destinationLabel !== null ? (
         <div className="mt-4 flex items-start gap-3 rounded-lg bg-surface-variant/60 p-3">
@@ -84,7 +102,7 @@ export default function GuidePanel({
           }`}
         >
           <span className="material-symbols-outlined">{guideStarted ? "check_circle" : "navigation"}</span>
-          {guideStarted ? t.guide.guideShowing : t.guide.guideStart}
+          {guideStarted ? t.guide.guideShowing : guideActionLabel}
         </button>
       )}
     </div>

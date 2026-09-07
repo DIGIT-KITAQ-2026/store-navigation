@@ -2,6 +2,7 @@
 
 import { Component, type ReactNode } from "react";
 import dynamic from "next/dynamic";
+import type { StockInfo } from "@/lib/inventory/stockStatus";
 
 const Scene = dynamic(() => import("./RealisticStoreScene"), {
   ssr: false,
@@ -26,6 +27,17 @@ class ViewerBoundary extends Component<{ children: ReactNode }, { failed: boolea
   }
 }
 
-export default function RealisticStoreViewer({ initialShelfId }: { initialShelfId?: string }) {
-  return <ViewerBoundary><Scene key={initialShelfId ?? "unselected"} initialShelfId={initialShelfId} /></ViewerBoundary>;
+export default function RealisticStoreViewer({
+  initialShelfId,
+  destinationStock,
+}: {
+  initialShelfId?: string;
+  /** 案内先商品の在庫状態。目的地の売り場を切り替えても再取得しない(propsで渡された値をそのまま使う)。 */
+  destinationStock?: StockInfo;
+}) {
+  return (
+    <ViewerBoundary>
+      <Scene key={initialShelfId ?? "unselected"} initialShelfId={initialShelfId} destinationStock={destinationStock} />
+    </ViewerBoundary>
+  );
 }

@@ -3,6 +3,7 @@
 import { useState, type ChangeEvent } from "react";
 import { REQUIRED_CSV_COLUMNS, OPTIONAL_CSV_COLUMNS } from "@/lib/inventory/csvSchema";
 import { sanitizeForSpreadsheetDisplay } from "@/lib/inventory/csvInjection";
+import { resolveStockStatusKind, STOCK_STATUS_SYMBOLS, STOCK_STATUS_LABELS_JA } from "@/lib/inventory/stockStatus";
 import type { InventoryCsvValidationResult, InventoryCsvRowResult } from "@/lib/inventory/validateInventoryCsv";
 
 type PreviewState = "idle" | "loading" | "success" | "error";
@@ -24,6 +25,36 @@ const STATUS_BADGE_CLASSES: Record<InventoryCsvRowResult["status"], string> = {
   error: "bg-red-50 text-red-700",
 };
 
+const STOCK_BADGE_CLASSES: Record<ReturnType<typeof resolveStockStatusKind>, string> = {
+  available: "bg-green-50 text-green-700",
+  outOfStock: "bg-slate-100 text-slate-700",
+  unknown: "bg-slate-100 text-slate-500",
+};
+
+/** actual_stock自体の在庫状態(この行が示す実地在庫の状態。行のok/warning/errorとは別軸)。 */
+function StockStatusChip({ actualStock }: { actualStock: number | null }) {
+  const kind = resolveStockStatusKind(actualStock);
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${STOCK_BADGE_CLASSES[kind]}`}
+    >
+      <span aria-hidden>{STOCK_STATUS_SYMBOLS[kind]}</span>
+      {STOCK_STATUS_LABELS_JA[kind]}
+    </span>
+  );
+}
+
+/** actual_stock - book_stock。どちらかが未確定(null)の場合はnull(表示は"-")。 */
+function computeStockDiff(row: InventoryCsvRowResult): number | null {
+  if (row.parsed.actualStock === null || row.parsed.bookStock === null) return null;
+  return row.parsed.actualStock - row.parsed.bookStock;
+}
+
+function formatDiff(diff: number | null): string {
+  if (diff === null) return "-";
+  return diff > 0 ? `+${diff}` : `${diff}`;
+}
+
 /**
  * 棚卸しCSVの取込フロー(選択→プレビュー→確定)。
  * プレビュー・確定のどちらも同じCSVテキストをサーバーへ送り、サーバー側で毎回再検証する
@@ -31,7 +62,10 @@ const STATUS_BADGE_CLASSES: Record<InventoryCsvRowResult["status"], string> = {
  */
 export default function InventoryImportFlow() {
   const [fileName, setFileName] = useState<string | null>(null);
-  const [csvText, setCsvText] = useState<string | null>(null);
+  // ファイルはバイト列のまま保持し、文字コード判定・デコードはサーバー側(decodeCsvBytes)で
+  // 一元的に行う(プレビュー・確定のどちらも同じ元バイト列を送るため、二重デコードによる
+  // 結果のズレが起きない)。
+  const [csvFile, setCsvFile] = useState<File | null>(null);
 
   const [previewState, setPreviewState] = useState<PreviewState>("idle");
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -41,7 +75,7 @@ export default function InventoryImportFlow() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importedCount, setImportedCount] = useState<number | null>(null);
 
-  async function runPreview(text: string) {
+  async function runPreview(file: File) {
     setPreviewState("loading");
     setPreviewError(null);
     setPreviewResult(null);
@@ -50,10 +84,11 @@ export default function InventoryImportFlow() {
     setImportedCount(null);
 
     try {
+      const formData = new FormData();
+      formData.append("file", file);
       const response = await fetch("/api/admin/inventory/preview", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv: text }),
+        body: formData,
       });
       const body: PreviewApiResponse = await response.json();
 
@@ -77,31 +112,21 @@ export default function InventoryImportFlow() {
     if (!file) return;
 
     setFileName(file.name);
-    setCsvText(null);
-    setPreviewState("loading");
-    setPreviewError(null);
-    setPreviewResult(null);
-
-    try {
-      const text = await file.text();
-      setCsvText(text);
-      await runPreview(text);
-    } catch {
-      setPreviewState("error");
-      setPreviewError("ファイルの読み込みに失敗しました");
-    }
+    setCsvFile(file);
+    await runPreview(file);
   }
 
   async function handleConfirmImport() {
-    if (!csvText) return;
+    if (!csvFile) return;
     setImportState("loading");
     setImportError(null);
 
     try {
+      const formData = new FormData();
+      formData.append("file", csvFile);
       const response = await fetch("/api/admin/inventory/import", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv: csvText }),
+        body: formData,
       });
       const body: { ok?: boolean; insertedCount?: number; error?: string } = await response.json();
 
@@ -224,9 +249,20 @@ export default function InventoryImportFlow() {
                   {sanitizeForSpreadsheetDisplay(row.raw.productName || "(商品名なし)")}
                 </p>
                 <p className="text-xs text-on-surface-variant">
-                  sku: {sanitizeForSpreadsheetDisplay(row.raw.sku || "-")} ・ 棚: {row.raw.shelfCode || "-"} ・
+                  sku: {sanitizeForSpreadsheetDisplay(row.raw.sku || "-")} ・ JAN:{" "}
+                  {sanitizeForSpreadsheetDisplay(row.raw.janCode || "-")} ・ 棚: {row.raw.shelfCode || "-"} ・
                   カテゴリ: {row.raw.categoryCode || "-"}
                 </p>
+                <p className="mt-1 text-xs text-on-surface-variant">
+                  実在庫: {row.raw.actualStock || "-"} ・ 帳簿在庫: {row.raw.bookStock || "-"} ・ 差異:{" "}
+                  {formatDiff(computeStockDiff(row))} ・ 既存商品:{" "}
+                  {row.resolved.productName
+                    ? sanitizeForSpreadsheetDisplay(row.resolved.productName)
+                    : "未登録"}
+                </p>
+                <div className="mt-1.5">
+                  <StockStatusChip actualStock={row.parsed.actualStock} />
+                </div>
                 {row.messages.length > 0 && (
                   <ul className="mt-1.5 flex flex-col gap-0.5">
                     {row.messages.map((message, index) => (
@@ -242,16 +278,21 @@ export default function InventoryImportFlow() {
 
           {/* デスクトップ: テーブル */}
           <div className="hidden overflow-x-auto rounded-xl border border-outline-variant bg-surface md:block">
-            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-outline-variant bg-surface-variant text-on-surface-variant">
                   <th className="px-3 py-2 font-semibold">行</th>
                   <th className="px-3 py-2 font-semibold">状態</th>
                   <th className="px-3 py-2 font-semibold">sku</th>
+                  <th className="px-3 py-2 font-semibold">JAN</th>
                   <th className="px-3 py-2 font-semibold">商品名</th>
                   <th className="px-3 py-2 font-semibold">棚</th>
                   <th className="px-3 py-2 font-semibold">カテゴリ</th>
-                  <th className="px-3 py-2 font-semibold">在庫数</th>
+                  <th className="px-3 py-2 font-semibold">実在庫</th>
+                  <th className="px-3 py-2 font-semibold">帳簿在庫</th>
+                  <th className="px-3 py-2 font-semibold">差異</th>
+                  <th className="px-3 py-2 font-semibold">在庫状態</th>
+                  <th className="px-3 py-2 font-semibold">既存商品</th>
                   <th className="px-3 py-2 font-semibold">理由</th>
                 </tr>
               </thead>
@@ -269,12 +310,25 @@ export default function InventoryImportFlow() {
                     <td className="px-3 py-2 text-on-surface">
                       {sanitizeForSpreadsheetDisplay(row.raw.sku || "-")}
                     </td>
+                    <td className="px-3 py-2 text-on-surface-variant">
+                      {sanitizeForSpreadsheetDisplay(row.raw.janCode || "-")}
+                    </td>
                     <td className="px-3 py-2 text-on-surface">
                       {sanitizeForSpreadsheetDisplay(row.raw.productName || "-")}
                     </td>
                     <td className="px-3 py-2 text-on-surface-variant">{row.raw.shelfCode || "-"}</td>
                     <td className="px-3 py-2 text-on-surface-variant">{row.raw.categoryCode || "-"}</td>
                     <td className="px-3 py-2 text-on-surface-variant">{row.raw.actualStock || "-"}</td>
+                    <td className="px-3 py-2 text-on-surface-variant">{row.raw.bookStock || "-"}</td>
+                    <td className="px-3 py-2 text-on-surface-variant">{formatDiff(computeStockDiff(row))}</td>
+                    <td className="px-3 py-2">
+                      <StockStatusChip actualStock={row.parsed.actualStock} />
+                    </td>
+                    <td className="px-3 py-2 text-on-surface-variant">
+                      {row.resolved.productName
+                        ? sanitizeForSpreadsheetDisplay(row.resolved.productName)
+                        : "未登録"}
+                    </td>
                     <td className="px-3 py-2 text-on-surface-variant">
                       {row.messages.length === 0 ? "-" : row.messages.join(" / ")}
                     </td>

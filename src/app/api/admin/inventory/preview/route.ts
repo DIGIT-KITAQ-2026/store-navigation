@@ -1,10 +1,7 @@
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { requireAdminSession, adminAuthErrorResponse } from "@/lib/supabase/adminAuth";
 import { validateInventoryCsv } from "@/lib/inventory/validateInventoryCsv";
-
-interface RequestBody {
-  csv: string;
-}
+import { decodeCsvBytes } from "@/lib/inventory/decodeCsvBytes";
 
 // 棚卸しCSVのプレビュー専用API。ここでは何もinventory_countsへ保存しない
 // (確定保存は/api/admin/inventory/import側の役割)。
@@ -13,9 +10,15 @@ export async function POST(request: Request) {
   if (!session.ok) return adminAuthErrorResponse(session);
   const { storeId } = session;
 
-  const body = (await request.json().catch(() => null)) as RequestBody | null;
-  if (!body || typeof body.csv !== "string") {
-    return Response.json({ error: "CSVが指定されていません" }, { status: 400 });
+  const formData = await request.formData().catch(() => null);
+  const file = formData?.get("file");
+  if (!(file instanceof Blob)) {
+    return Response.json({ error: "CSVファイルが指定されていません" }, { status: 400 });
+  }
+
+  const decoded = decodeCsvBytes(new Uint8Array(await file.arrayBuffer()));
+  if (!decoded.ok) {
+    return Response.json({ error: decoded.error }, { status: 400 });
   }
 
   let supabase;
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await validateInventoryCsv(body.csv, {
+    const result = await validateInventoryCsv(decoded.text, {
       supabase,
       storeId,
       storeEntryQrCode: store.entry_qr_code,

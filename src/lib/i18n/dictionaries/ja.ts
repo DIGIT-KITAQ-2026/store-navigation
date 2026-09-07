@@ -53,6 +53,15 @@ export interface Dictionary {
     guideShowing: string;
     guideStart: string;
     guideMessage: string;
+    actionNavigateToShelf: string;
+    actionCheckShelf: string;
+  };
+  stock: {
+    availableLabel: string;
+    outOfStockLabel: string;
+    unknownLabel: string;
+    quantity: string;
+    lastCounted: string;
   };
   navigate: {
     backToSearch: string;
@@ -148,6 +157,15 @@ const ja: Dictionary = {
     guideShowing: "3D案内を表示中",
     guideStart: "3D案内を開始",
     guideMessage: "3D店内マップで{label}への案内を表示します",
+    actionNavigateToShelf: "この棚へ案内",
+    actionCheckShelf: "売場を確認",
+  },
+  stock: {
+    availableLabel: "在庫あり",
+    outOfStockLabel: "在庫なし",
+    unknownLabel: "在庫情報なし",
+    quantity: "在庫数 {count}{unit}",
+    lastCounted: "最終確認 {datetime}",
   },
   navigate: {
     backToSearch: "検索結果に戻る",

@@ -14,8 +14,15 @@ import DestinationMarker from "@/components/store-3d/DestinationMarker";
 import RealisticStoreModel from "./RealisticStoreModel";
 import PreviewController from "./PreviewController";
 import RealisticAutoCamera, { type GuideCommand } from "./RealisticAutoCamera";
+import type { StockInfo } from "@/lib/inventory/stockStatus";
 
-export default function RealisticStoreScene({ initialShelfId }: { initialShelfId?: string }) {
+export default function RealisticStoreScene({
+  initialShelfId,
+  destinationStock,
+}: {
+  initialShelfId?: string;
+  destinationStock?: StockInfo;
+}) {
   const [layout, setLayout] = useState<RealisticLayout | null>(null);
   const [selected, setSelected] = useState(() => normalizeRealisticShelfId(initialShelfId));
   const [mode, setMode] = useState<"manual" | "auto">("manual");
@@ -82,6 +89,7 @@ export default function RealisticStoreScene({ initialShelfId }: { initialShelfId
         </Canvas>
         <RealisticStoreControls selected={selected} mode={mode} playback={playback} ready={!!layout} switching={switching}
           mobile={showsMobileControls} locked={locked} pointerLock={supportsPointerLock && !lockFailed} movement={movement}
+          stock={selected === normalizeRealisticShelfId(initialShelfId) ? destinationStock ?? null : null}
           onSelect={(id) => {
             setSelected(normalizeRealisticShelfId(id)); setCommand({ kind: "current" });
             if (playback !== "playing") setPlayback("idle");

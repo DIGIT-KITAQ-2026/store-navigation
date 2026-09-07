@@ -52,6 +52,15 @@ const zh: Dictionary = {
     guideShowing: "正在显示3D导航",
     guideStart: "开始3D导航",
     guideMessage: "正在3D店内地图上显示前往{label}的路线",
+    actionNavigateToShelf: "前往该货架",
+    actionCheckShelf: "请到货架确认",
+  },
+  stock: {
+    availableLabel: "有库存",
+    outOfStockLabel: "无库存",
+    unknownLabel: "库存信息暂无",
+    quantity: "库存 {count}{unit}",
+    lastCounted: "最后确认时间 {datetime}",
   },
   navigate: {
     backToSearch: "返回搜索结果",

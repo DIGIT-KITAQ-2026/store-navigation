@@ -1,3 +1,5 @@
+import type { StockInfo } from "@/lib/inventory/stockStatus";
+
 export interface Product {
   id: string;
   name: string;
@@ -6,6 +8,8 @@ export interface Product {
   shelfId: string | null;
   shelfNumber: string | null;
   description: string;
+  /** 最新棚卸しから解決した在庫状態(src/lib/inventory/latestStock.ts参照) */
+  stock: StockInfo;
 }
 
 export interface SearchResultItem {
