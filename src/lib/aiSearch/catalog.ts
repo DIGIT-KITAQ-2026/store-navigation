@@ -9,7 +9,11 @@ function toShelfNumber(locationCode: string): string {
   return locationCode.replace(/^Shelf_/, "");
 }
 
-/** 単一デモ店舗のMVPスコープのため、最初の店舗の全商品を検索対象カタログとして取得する */
+/**
+ * 単一デモ店舗のMVPスコープのため、最初の店舗の全商品を検索対象カタログとして取得する。
+ * category_idが未設定の商品(新カテゴリ体系への移行前の旧商品)は、物理棚の再割り当てが
+ * 済んでおらず案内先が実態と一致しないため、検索対象から除外する。
+ */
 export async function fetchStoreCatalog(supabase: SupabaseClient<Database>): Promise<{
   catalog: CatalogItem[];
   locationCodeByProductId: Map<string, string>;
@@ -27,7 +31,8 @@ export async function fetchStoreCatalog(supabase: SupabaseClient<Database>): Pro
   const { data: products, error: productsError } = await supabase
     .from("products")
     .select("id, name, category, category_id, description, shelves(shelf_locations(id, location_code))")
-    .eq("store_id", store.id);
+    .eq("store_id", store.id)
+    .not("category_id", "is", null);
 
   if (productsError) return null;
 
