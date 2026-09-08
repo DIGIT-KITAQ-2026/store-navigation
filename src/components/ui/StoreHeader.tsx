@@ -1,22 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { useTranslations } from "@/lib/i18n/useTranslations";
+import { useStoreFlow } from "@/lib/storeFlowState";
+import { findBranch, findChain } from "@/lib/stores/storeDirectory";
 
 /**
- * ヘッダーはどの画面でもサービス名を出す。
- * 以前はSupabaseの店舗名(「実演用デモ店舗」)を出していたが、店舗検索→支店検索→商品検索の
- * 3段階になり、店舗を選ぶ前の画面で特定の店舗名が出るのがおかしくなったため固定にした。
- * 管理者画面のヘッダー(AdminHeader)と同じ表記に揃えている。
+ * 店舗を選ぶ前に出す名前。管理者画面のヘッダー(AdminHeader)と同じ表記に揃えている。
  */
 const SERVICE_NAME = "Smart Store Navi";
 
+/** URLから選択中の店舗・支店を読み取る(/stores/<店舗>/<支店>) */
+function readSelectionFromPath(pathname: string): { chainId: string | null; branchId: string | null } | null {
+  if (pathname === "/") return { chainId: null, branchId: null };
+
+  const match = pathname.match(/^\/stores\/([^/]+)(?:\/([^/]+))?/);
+  if (!match) return null;
+
+  return { chainId: match[1], branchId: match[2] ?? null };
+}
+
+/**
+ * 消費者画面のヘッダー。今どの店舗・支店を見ているかをタイトルに出す。
+ *
+ * 店舗を選ぶ前は「Smart Store Navi」、店舗を選んだら店舗名、支店まで選んだら
+ * 「店舗名 支店名」になる。検索結果やナビ画面のようにURLに店舗が現れない画面では、
+ * 直前に選んだものをそのまま出し続ける(共通レイアウトのStoreFlowProviderが覚えている)。
+ */
 export default function StoreHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const t = useTranslations();
+  const pathname = usePathname();
+  const { selectedChainId, selectedBranchId, setSelection } = useStoreFlow();
+
+  // URLに店舗が現れる画面でだけ選択を更新する。それ以外の画面では前の選択を保つ
+  useEffect(() => {
+    const fromPath = readSelectionFromPath(pathname);
+    if (fromPath) setSelection(fromPath.chainId, fromPath.branchId);
+  }, [pathname, setSelection]);
+
+  const chain = selectedChainId ? findChain(selectedChainId) : null;
+  const branch =
+    selectedChainId && selectedBranchId ? findBranch(selectedChainId, selectedBranchId) : null;
+  const title = chain ? [chain.name, branch?.name].filter(Boolean).join(" ") : SERVICE_NAME;
 
   return (
     <header className="sticky top-0 z-40 border-b border-outline-variant bg-surface shadow-sm">
@@ -29,7 +59,7 @@ export default function StoreHeader() {
             height={40}
             className="h-8 w-8 shrink-0 object-contain md:h-10 md:w-10"
           />
-          <p className="min-w-0 truncate text-xl font-bold text-on-surface">{SERVICE_NAME}</p>
+          <p className="min-w-0 truncate text-xl font-bold text-on-surface">{title}</p>
         </Link>
 
         <div className="relative shrink-0">
