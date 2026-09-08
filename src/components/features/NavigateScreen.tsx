@@ -37,18 +37,18 @@ export default function NavigateScreen({ product }: { product: Product }) {
           className="flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">
           <span aria-hidden="true" className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="text-lg font-bold">3Dストアナビ</h1>
-        <span className="ml-auto text-sm text-slate-600">商品案内</span>
+        <h1 className="text-lg font-bold">{t.navigate.title}</h1>
+        <span className="ml-auto text-sm text-slate-600">{t.navigate.productGuideLabel}</span>
       </header>
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div ref={viewerRef} className="relative h-[calc(100svh-8rem)] min-h-[480px] min-w-0 flex-1 overflow-hidden lg:h-auto lg:min-h-0">
-          {destination ? <RealisticStoreViewer initialShelfId={destination} destinationStock={product.stock} /> : (
+          {destination ? <RealisticStoreViewer initialShelfId={destination} destinationStock={product.stock} locale={locale} /> : (
             <div className="flex h-full items-center justify-center bg-stone-100 p-6">
               <p role="status" className="max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">{t.guide.pendingLocation}</p>
             </div>
           )}
         </div>
-        <aside aria-label="商品情報" className="w-full shrink-0 p-4 lg:w-[320px] lg:overflow-y-auto lg:border-l lg:border-slate-200">
+        <aside aria-label={t.navigate.productInfoAriaLabel} className="w-full shrink-0 p-4 lg:w-[320px] lg:overflow-y-auto lg:border-l lg:border-slate-200">
           <GuidePanel
             product={product}
             destinationLabel={destinationLabel}
