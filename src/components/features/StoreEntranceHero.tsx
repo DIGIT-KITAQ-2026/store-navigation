@@ -213,7 +213,7 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
             <span aria-hidden="true" className="store-search-handle" />
           </button>
 
-          <div className="store-search-card-content mx-auto flex w-full max-w-2xl flex-1 flex-col items-center gap-6 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] text-center md:max-w-4xl">
+          <div className="store-search-card-content mx-auto flex w-full max-w-2xl flex-1 flex-col items-center gap-6 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-6 text-center md:max-w-4xl md:pt-10">
             <form
               method="GET"
               action="/search"

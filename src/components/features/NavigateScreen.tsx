@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import RealisticStoreViewer from "@/components/store-3d-realistic/RealisticStoreViewer";
 import GuidePanel from "@/components/features/GuidePanel";
@@ -14,20 +13,12 @@ export default function NavigateScreen({ product }: { product: Product }) {
   const router = useRouter();
   const t = useTranslations();
   const { locale } = useLocale();
-  const [guideStarted, setGuideStarted] = useState(false);
-  const viewerRef = useRef<HTMLDivElement>(null);
   // Use the already fetched shelf ID. Never infer a destination for an unknown ID.
   const destination = normalizeRealisticShelfId(product.shelfId);
   const destinationLabel = destination ? translateCategory(REALISTIC_CATEGORIES[destination], locale) : null;
   const handleBackToSearch = () => {
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
     else router.push("/search");
-  };
-  // モバイルではGuidePanelが3Dビューアーの下に縦積みされるため、ボタン押下時に
-  // 3Dビューアーへスクロールする(3D側のBFS・経路・Canvasには一切触れない)。
-  const handleStartGuide = () => {
-    setGuideStarted(true);
-    viewerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
@@ -41,7 +32,7 @@ export default function NavigateScreen({ product }: { product: Product }) {
         <span className="ml-auto text-sm text-slate-600">{t.navigate.productGuideLabel}</span>
       </header>
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div ref={viewerRef} className="relative h-[calc(100svh-8rem)] min-h-[480px] min-w-0 flex-1 overflow-hidden lg:h-auto lg:min-h-0">
+        <div className="relative h-[calc(100svh-8rem)] min-h-[480px] min-w-0 flex-1 overflow-hidden lg:h-auto lg:min-h-0">
           {destination ? <RealisticStoreViewer initialShelfId={destination} destinationStock={product.stock} locale={locale} /> : (
             <div className="flex h-full items-center justify-center bg-stone-100 p-6">
               <p role="status" className="max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">{t.guide.pendingLocation}</p>
@@ -49,13 +40,7 @@ export default function NavigateScreen({ product }: { product: Product }) {
           )}
         </div>
         <aside aria-label={t.navigate.productInfoAriaLabel} className="w-full shrink-0 p-4 lg:w-[320px] lg:overflow-y-auto lg:border-l lg:border-slate-200">
-          <GuidePanel
-            product={product}
-            destinationLabel={destinationLabel}
-            guideMessage={null}
-            guideStarted={guideStarted}
-            onStartGuide={handleStartGuide}
-          />
+          <GuidePanel product={product} destinationLabel={destinationLabel} />
         </aside>
       </div>
     </div>
