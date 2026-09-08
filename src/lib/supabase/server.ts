@@ -3,6 +3,8 @@ import type { Database } from "./database.types";
 import type { Product } from "@/types/product";
 import { translateProduct } from "@/lib/translate/productTranslation";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { fetchLatestStockForStore, resolveLatestStock } from "@/lib/inventory/latestStock";
+import { buildStockInfo } from "@/lib/inventory/stockStatus";
 
 /**
  * サーバーサイド専用のSupabaseクライアント。RLSをバイパスするService Role Keyを使うため、
@@ -26,7 +28,10 @@ export function createSupabaseServiceClient() {
  * /navigate/[productId] のServer Componentから呼び出す想定。
  * 該当商品自体が無い場合のみnullを返す(呼び出し側でnotFound()する)。products.shelf_idは
  * nullable(棚バーコードでの登録前の商品が存在し得る)なため、棚が未設定の場合はnullにはせず
- * shelfId/shelfNumberがnullのProductを返す(呼び出し側で「準備中」表示に出し分けるため)
+ * shelfId/shelfNumberがnullのProductを返す(呼び出し側で「準備中」表示に出し分けるため)。
+ * category_idが未設定の商品(新カテゴリ体系への移行前の旧商品)は、物理棚の再割り当てが
+ * 済んでおらず案内先が実態と一致しないため、URL直打ち等の直接アクセスでも「見つからない」
+ * 扱いにする(fetchStoreCatalog側の検索除外と同じ基準)。
  */
 export async function getProductWithShelfLocation(
   productId: string,
@@ -36,13 +41,18 @@ export async function getProductWithShelfLocation(
 
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, category, description, shelves(shelf_locations(location_code))")
+    .select("id, name, category, category_id, description, store_id, shelves(shelf_locations(id, location_code))")
     .eq("id", productId)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error || !data || !data.category_id) return null;
 
-  const locationCode = data.shelves?.shelf_locations?.location_code ?? null;
+  const shelfLocation = data.shelves?.shelf_locations;
+  const locationCode = shelfLocation?.location_code ?? null;
+
+  const stockTarget = { productId: data.id, shelfLocationId: shelfLocation?.id ?? null };
+  const stockMaps = await fetchLatestStockForStore(supabase, data.store_id, [stockTarget]);
+  const stock = buildStockInfo(resolveLatestStock(stockTarget, stockMaps));
 
   const product: Product = {
     id: data.id,
@@ -51,6 +61,7 @@ export async function getProductWithShelfLocation(
     shelfId: locationCode,
     shelfNumber: locationCode ? locationCode.replace(/^Shelf_/, "") : null,
     description: data.description ?? "",
+    stock,
   };
 
   return translateProduct(product, locale);

@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import SearchSuggestions from "@/components/ui/SearchSuggestions";
 import ImageSearchButton from "@/components/ui/ImageSearchButton";
 import AttachedImageChip from "@/components/ui/AttachedImageChip";
 import VoiceSearchButton from "@/components/ui/VoiceSearchButton";
@@ -25,10 +24,6 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
 
-  const suggestions = useMemo(
-    () => [t.hero.suggestion1, t.hero.suggestion2, t.hero.suggestion3, t.hero.suggestion4],
-    [t]
-  );
 
   const handleImageSelected = (file: File) => {
     setAttachedFile(file);
@@ -140,9 +135,6 @@ export default function StoreEntranceHero({ storeName }: StoreEntranceHeroProps)
         <span className="text-primary">{t.hero.headingLine2}</span>
       </h2>
       <p className="mt-1 text-xs text-on-surface-variant md:text-base">{t.hero.subDescription}</p>
-      <div className="w-full pb-[max(2rem,env(safe-area-inset-bottom))]">
-        <SearchSuggestions suggestions={suggestions} />
-      </div>
     </StoreHeroShell>
   );
 }

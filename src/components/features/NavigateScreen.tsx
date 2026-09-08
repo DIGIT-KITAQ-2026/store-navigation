@@ -1,110 +1,47 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import StoreNavigation3D from "@/components/store-3d/StoreNavigation3D";
+import RealisticStoreViewer from "@/components/store-3d-realistic/RealisticStoreViewer";
 import GuidePanel from "@/components/features/GuidePanel";
-import { findKnownDestination } from "@/lib/store-navigation/store-layout";
-import { useTranslations, format } from "@/lib/i18n/useTranslations";
+import { normalizeRealisticShelfId, REALISTIC_CATEGORIES } from "@/lib/store-navigation/realistic-store-ids";
+import { useTranslations } from "@/lib/i18n/useTranslations";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { translateCategory } from "@/lib/i18n/categoryLabels";
 import type { Product } from "@/types/product";
 
-interface NavigateScreenProps {
-  product: Product;
-}
-
-export default function NavigateScreen({ product }: NavigateScreenProps) {
+export default function NavigateScreen({ product }: { product: Product }) {
   const router = useRouter();
   const t = useTranslations();
   const { locale } = useLocale();
-  // 「3D案内を開始」が押されたか(経路・矢印・目的地マーカーをStoreNavigation3D側に表示するか)。
-  // 商品ページを開いた直後は常にfalseで、3D店舗自体は見えるが案内表示は出さない
-  const [guideStarted, setGuideStarted] = useState(false);
-
-  // Supabaseから取得済みのshelfIdを、登録済みの正式な棚id(Shelf_01〜08)としてだけ扱う。
-  // 棚未登録・未登録値の場合はnullとなり、3D案内自体を出さない(resolveDestination()の
-  // Shelf_01フォールバックには乗せない。実商品を誤って青果へ案内してしまうため)
-  const destination = findKnownDestination(product.shelfId);
-  const destinationLabel = destination ? translateCategory(destination.label, locale) : null;
-  // 表示中のロケールから毎回組み立てる(押した瞬間の言語で固定したstateにすると、
-  // 案内開始後に言語を切り替えても翻訳されないままになるため)
-  const guideMessage =
-    guideStarted && destinationLabel ? format(t.guide.guideMessage, { label: destinationLabel }) : null;
-
-  // 商品(=棚ID)が変わったら、以前の商品ページで案内開始済みだった状態を持ち越さない。
-  // useEffectではなくレンダー中にstateを調整するReact推奨パターンを使う
-  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
-  const guideResetKey = `${product.id}:${destination?.id ?? ""}`;
-  const [lastGuideResetKey, setLastGuideResetKey] = useState(guideResetKey);
-  if (guideResetKey !== lastGuideResetKey) {
-    setLastGuideResetKey(guideResetKey);
-    setGuideStarted(false);
-  }
-
-  const handleStartGuide = () => {
-    if (!destination || !destinationLabel) return;
-    setGuideStarted(true);
-  };
-
+  // Use the already fetched shelf ID. Never infer a destination for an unknown ID.
+  const destination = normalizeRealisticShelfId(product.shelfId);
+  const destinationLabel = destination ? translateCategory(REALISTIC_CATEGORIES[destination], locale) : null;
   const handleBackToSearch = () => {
-    // ブラウザ履歴を戻ることで、/searchのSearchScreenが保持していた前回の検索結果
-    // (useStateの内容)をそのまま復元する。直接アクセス等で履歴が無い場合のみ
-    // /searchへ新規遷移する
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/search");
-    }
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/search");
   };
 
   return (
-    <div className="relative flex min-h-dvh flex-col bg-surface md:h-[calc(100dvh-4rem)] md:min-h-0">
-      <div className="flex items-center gap-3 px-4 py-3">
-        <button
-          type="button"
-          onClick={handleBackToSearch}
-          aria-label={t.navigate.backToSearch}
-          className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-surface-variant"
-        >
-          <span className="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+    <div className="flex min-h-0 flex-col bg-surface text-[#122033] lg:h-[calc(100dvh-4rem)]">
+      <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-[#122033]/10 bg-white px-4">
+        <button type="button" onClick={handleBackToSearch} aria-label={t.navigate.backToSearch}
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">
+          <span aria-hidden="true" className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="text-xl font-bold text-on-surface">{t.navigate.backToSearch}</h1>
-      </div>
-
-      <div className="flex flex-1 flex-col md:min-h-0 md:flex-row">
-        {/*
-          StoreNavigation3D自体が目的地ラベル・モード切替などの重ねUIを内部で持つため、
-          このラッパーには重複するオーバーレイ(戻るボタン等)を置かない。
-          モバイルはaspect-videoだけに頼ると縦幅が狭すぎる(操作しにくい)ため、
-          min-height + 100dvh基準の高さで最低限の3D操作領域を確保する。
-          PCはmd:flex-1でサイドパネル分を除いた残り幅いっぱいに表示する(高さは変更しない)
-        */}
-        <div className="relative min-h-[280px] h-[52dvh] max-h-[520px] w-full shrink-0 overflow-hidden md:h-full md:max-h-none md:min-h-0 md:aspect-auto md:min-w-0 md:flex-1">
-          {destination ? (
-            <StoreNavigation3D
-              destinationId={destination.id}
-              initialMode="auto-demo"
-              guideVisible={guideStarted}
-              className="h-full w-full"
-              locale={locale}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-surface-variant/40 px-6 text-center">
-              <p className="text-sm font-medium text-on-surface-variant">{t.guide.pendingLocation}</p>
+        <h1 className="text-lg font-bold">{t.navigate.title}</h1>
+        <span className="ml-auto text-sm text-slate-600">{t.navigate.productGuideLabel}</span>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="relative h-[calc(100svh-8rem)] min-h-[480px] min-w-0 flex-1 overflow-hidden lg:h-auto lg:min-h-0">
+          {destination ? <RealisticStoreViewer initialShelfId={destination} destinationStock={product.stock} locale={locale} /> : (
+            <div className="flex h-full items-center justify-center bg-stone-100 p-6">
+              <p role="status" className="max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">{t.guide.pendingLocation}</p>
             </div>
           )}
         </div>
-
-        <div className="animate-fade-in-up w-full shrink-0 p-4 md:h-full md:w-[380px] md:overflow-y-auto md:border-l md:border-outline-variant md:p-6">
-          <GuidePanel
-            product={product}
-            destinationLabel={destinationLabel}
-            guideMessage={guideMessage}
-            guideStarted={guideStarted}
-            onStartGuide={handleStartGuide}
-          />
-        </div>
+        <aside aria-label={t.navigate.productInfoAriaLabel} className="w-full shrink-0 p-4 lg:w-[320px] lg:overflow-y-auto lg:border-l lg:border-slate-200">
+          <GuidePanel product={product} destinationLabel={destinationLabel} />
+        </aside>
       </div>
     </div>
   );
