@@ -11,23 +11,12 @@ interface GuidePanelProps {
   product: Product;
   /** 案内先の売り場名(青果、加工食品など)。棚IDが未登録/未登録値の場合はnull */
   destinationLabel: string | null;
-  guideMessage: string | null;
-  /** 「3D案内を開始」が押され、3D側に経路・矢印・目的地マーカーを表示している状態か */
-  guideStarted: boolean;
-  onStartGuide?: () => void;
 }
 
-export default function GuidePanel({
-  product,
-  destinationLabel,
-  guideMessage,
-  guideStarted,
-  onStartGuide,
-}: GuidePanelProps) {
+export default function GuidePanel({ product, destinationLabel }: GuidePanelProps) {
   const t = useTranslations();
   const { locale } = useLocale();
   const { stock } = product;
-  const guideActionLabel = stock.kind === "available" ? t.guide.actionNavigateToShelf : t.guide.actionCheckShelf;
 
   return (
     <div className="w-full rounded-xl border border-outline-variant bg-surface p-5 shadow-xl">
@@ -86,31 +75,6 @@ export default function GuidePanel({
       )}
 
       <p className="mt-3 text-sm text-on-surface-variant">{product.description}</p>
-
-      {guideMessage !== null && (
-        <p
-          role="status"
-          className="animate-fade-in-up mt-3 rounded-lg bg-primary-container px-4 py-3 text-sm font-medium text-on-primary-container"
-        >
-          {guideMessage}
-        </p>
-      )}
-
-      {destinationLabel !== null && onStartGuide && (
-        <button
-          type="button"
-          onClick={onStartGuide}
-          aria-pressed={guideStarted}
-          className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold shadow-md transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 motion-reduce:transition-none motion-reduce:active:scale-100 ${
-            guideStarted
-              ? "bg-primary-container text-on-primary-container hover:bg-primary-container/90"
-              : "bg-primary text-on-primary hover:bg-primary/90"
-          }`}
-        >
-          <span className="material-symbols-outlined">{guideStarted ? "check_circle" : "navigation"}</span>
-          {guideStarted ? t.guide.guideShowing : guideActionLabel}
-        </button>
-      )}
     </div>
   );
 }

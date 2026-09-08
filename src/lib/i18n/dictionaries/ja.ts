@@ -50,9 +50,6 @@ export interface Dictionary {
     shelfId: string;
     locationSentence: string;
     pendingLocation: string;
-    guideShowing: string;
-    guideStart: string;
-    guideMessage: string;
     actionNavigateToShelf: string;
     actionCheckShelf: string;
   };
@@ -201,9 +198,6 @@ const ja: Dictionary = {
     shelfId: "棚ID: {shelfId}",
     locationSentence: "{name}は{category}コーナーの棚{shelfNumber}にあります",
     pendingLocation: "この商品の売り場情報は現在準備中です",
-    guideShowing: "3D案内を表示中",
-    guideStart: "3D案内を開始",
-    guideMessage: "3D店内マップで{label}への案内を表示します",
     actionNavigateToShelf: "この棚へ案内",
     actionCheckShelf: "売場を確認",
   },
