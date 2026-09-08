@@ -15,13 +15,21 @@ import RealisticStoreModel from "./RealisticStoreModel";
 import PreviewController from "./PreviewController";
 import RealisticAutoCamera, { type GuideCommand } from "./RealisticAutoCamera";
 import type { StockInfo } from "@/lib/inventory/stockStatus";
+import type { Dictionary } from "@/lib/i18n/dictionaries/ja";
+import type { Locale } from "@/lib/i18n/locales";
 
 export default function RealisticStoreScene({
   initialShelfId,
   destinationStock,
+  t,
+  stockLabels,
+  locale,
 }: {
   initialShelfId?: string;
   destinationStock?: StockInfo;
+  t: Dictionary["navigate3dRealistic"];
+  stockLabels: Dictionary["stock"];
+  locale?: Locale;
 }) {
   const [layout, setLayout] = useState<RealisticLayout | null>(null);
   const [selected, setSelected] = useState(() => normalizeRealisticShelfId(initialShelfId));
@@ -71,11 +79,11 @@ export default function RealisticStoreScene({
       <div className="relative min-h-0 flex-1">
         <Canvas dpr={[1, 1.5]} gl={{ antialias: true }}
           camera={{ position: [18, EYE_HEIGHT, 13.8], rotation: [0, 0, 0], fov: 60, near: 0.1, far: 100 }} style={{ touchAction: "none" }}
-          fallback={<p role="alert" className="p-6">このブラウザでは3D表示を利用できません。</p>}>
+          fallback={<p role="alert" className="p-6">{t.webglUnsupported}</p>}>
           <color attach="background" args={["#e8e5dd"]} />
           <hemisphereLight args={["#fffaf0", "#d8e0e6", 0.9]} /><ambientLight intensity={0.35} />
           <directionalLight position={[18, 10, 4]} intensity={0.6} />
-          <Suspense fallback={<Html center><p role="status" className="whitespace-nowrap rounded bg-white px-4 py-2">店舗と経路を準備しています…</p></Html>}>
+          <Suspense fallback={<Html center><p role="status" className="whitespace-nowrap rounded bg-white px-4 py-2">{t.sceneLoading}</p></Html>}>
             <RealisticStoreModel onReady={onReady} />
             {layout && <>
               {path.length > 1 && <NavigationRoute path={path} reducedMotion={reducedMotion} />}
@@ -90,6 +98,7 @@ export default function RealisticStoreScene({
         <RealisticStoreControls selected={selected} mode={mode} playback={playback} ready={!!layout} switching={switching}
           mobile={showsMobileControls} locked={locked} pointerLock={supportsPointerLock && !lockFailed} movement={movement}
           stock={selected === normalizeRealisticShelfId(initialShelfId) ? destinationStock ?? null : null}
+          t={t} stockLabels={stockLabels} locale={locale}
           onSelect={(id) => {
             setSelected(normalizeRealisticShelfId(id)); setCommand({ kind: "current" });
             if (playback !== "playing") setPlayback("idle");

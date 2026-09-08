@@ -65,6 +65,9 @@ export interface Dictionary {
   };
   navigate: {
     backToSearch: string;
+    productInfoAriaLabel: string;
+    title: string;
+    productGuideLabel: string;
   };
   imageSearch: {
     cameraOption: string;
@@ -112,6 +115,40 @@ export interface Dictionary {
     unsupportedMessage: string;
     errorMessage: string;
     entranceLabel: string;
+  };
+  navigate3dRealistic: {
+    viewerLoading: string;
+    viewerError: string;
+    reload: string;
+    webglUnsupported: string;
+    sceneLoading: string;
+    hintMobile: string;
+    hintDesktop: string;
+    statusPreparing: string;
+    statusSelectPrompt: string;
+    statusGuiding: string;
+    statusPaused: string;
+    statusArrived: string;
+    statusBlocked: string;
+    statusReady: string;
+    helperBlocked: string;
+    helperNoSelection: string;
+    destinationAriaLabel: string;
+    destinationLabel: string;
+    categoryUnselected: string;
+    shelfPlaceholder: string;
+    modeGroupAriaLabel: string;
+    modeManual: string;
+    modeAuto: string;
+    lockButton: string;
+    joystickAriaLabel: string;
+    shelfSelectorLabel: string;
+    backToEntrance: string;
+    selectAnotherShelf: string;
+    pauseButton: string;
+    resumeButton: string;
+    startButton: string;
+    replayButton: string;
   };
 }
 
@@ -179,6 +216,9 @@ const ja: Dictionary = {
   },
   navigate: {
     backToSearch: "検索結果に戻る",
+    productInfoAriaLabel: "商品情報",
+    title: "3Dストアナビ",
+    productGuideLabel: "商品案内",
   },
   imageSearch: {
     cameraOption: "カメラで検索",
@@ -226,6 +266,40 @@ const ja: Dictionary = {
     unsupportedMessage: "お使いの環境では3D表示をご利用いただけません。",
     errorMessage: "3D表示の読み込み中に問題が発生しました。",
     entranceLabel: "入口",
+  },
+  navigate3dRealistic: {
+    viewerLoading: "店舗を準備しています…",
+    viewerError: "店舗を表示できませんでした。通信状態とブラウザをご確認ください。",
+    reload: "再読み込み",
+    webglUnsupported: "このブラウザでは3D表示を利用できません。",
+    sceneLoading: "店舗と経路を準備しています…",
+    hintMobile: "スティックで移動・画面スワイプで見回す",
+    hintDesktop: "WASD / 矢印キーで移動・マウスで見回す・Escで解除",
+    statusPreparing: "店舗を準備しています",
+    statusSelectPrompt: "売り場を選択してください",
+    statusGuiding: "{category}売り場へ案内中",
+    statusPaused: "案内を一時停止しました",
+    statusArrived: "目的地に到着しました",
+    statusBlocked: "現在位置から安全な経路を確認できません",
+    statusReady: "案内を開始できます",
+    helperBlocked: "「入口へ戻る」を選んで、案内をやり直してください。",
+    helperNoSelection: "場所情報を確認できません。売り場を選択するか、商品検索へ戻ってください。",
+    destinationAriaLabel: "現在の目的地",
+    destinationLabel: "目的地",
+    categoryUnselected: "未選択",
+    shelfPlaceholder: "売り場を選択",
+    modeGroupAriaLabel: "操作モード",
+    modeManual: "一人称で歩く",
+    modeAuto: "自動案内",
+    lockButton: "視点操作を開始",
+    joystickAriaLabel: "店舗内の視点を移動",
+    shelfSelectorLabel: "売り場を選択",
+    backToEntrance: "入口へ戻る",
+    selectAnotherShelf: "別の売り場を選ぶ",
+    pauseButton: "一時停止",
+    resumeButton: "再開",
+    startButton: "案内を開始",
+    replayButton: "最初から再生",
   },
 };
 
