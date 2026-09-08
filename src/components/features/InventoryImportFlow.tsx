@@ -3,7 +3,13 @@
 import { useState, type ChangeEvent } from "react";
 import { REQUIRED_CSV_COLUMNS, OPTIONAL_CSV_COLUMNS } from "@/lib/inventory/csvSchema";
 import { sanitizeForSpreadsheetDisplay } from "@/lib/inventory/csvInjection";
-import { resolveStockStatusKind, STOCK_STATUS_SYMBOLS, STOCK_STATUS_LABELS_JA } from "@/lib/inventory/stockStatus";
+import {
+  resolveStockStatusKind,
+  STOCK_STATUS_SYMBOLS,
+  STOCK_STATUS_LABELS_JA,
+  computeStockDiff,
+  formatStockDiff,
+} from "@/lib/inventory/stockStatus";
 import type { InventoryCsvValidationResult, InventoryCsvRowResult } from "@/lib/inventory/validateInventoryCsv";
 
 type PreviewState = "idle" | "loading" | "success" | "error";
@@ -44,15 +50,9 @@ function StockStatusChip({ actualStock }: { actualStock: number | null }) {
   );
 }
 
-/** actual_stock - book_stock。どちらかが未確定(null)の場合はnull(表示は"-")。 */
-function computeStockDiff(row: InventoryCsvRowResult): number | null {
-  if (row.parsed.actualStock === null || row.parsed.bookStock === null) return null;
-  return row.parsed.actualStock - row.parsed.bookStock;
-}
-
-function formatDiff(diff: number | null): string {
-  if (diff === null) return "-";
-  return diff > 0 ? `+${diff}` : `${diff}`;
+interface InventoryImportFlowProps {
+  /** 確定取込が成功した直後に呼ばれる(棚卸履歴一覧の再取得トリガー用)。 */
+  onImportSuccess?: () => void;
 }
 
 /**
@@ -60,7 +60,7 @@ function formatDiff(diff: number | null): string {
  * プレビュー・確定のどちらも同じCSVテキストをサーバーへ送り、サーバー側で毎回再検証する
  * (このコンポーネントでの表示用チェックはあくまで補助で、正式な判定はAPI側の結果を使う)。
  */
-export default function InventoryImportFlow() {
+export default function InventoryImportFlow({ onImportSuccess }: InventoryImportFlowProps) {
   const [fileName, setFileName] = useState<string | null>(null);
   // ファイルはバイト列のまま保持し、文字コード判定・デコードはサーバー側(decodeCsvBytes)で
   // 一元的に行う(プレビュー・確定のどちらも同じ元バイト列を送るため、二重デコードによる
@@ -138,6 +138,7 @@ export default function InventoryImportFlow() {
 
       setImportedCount(body.insertedCount ?? 0);
       setImportState("success");
+      onImportSuccess?.();
     } catch {
       setImportState("error");
       setImportError("棚卸しデータの保存に失敗しました。通信状況を確認してください。");
@@ -255,7 +256,7 @@ export default function InventoryImportFlow() {
                 </p>
                 <p className="mt-1 text-xs text-on-surface-variant">
                   実在庫: {row.raw.actualStock || "-"} ・ 帳簿在庫: {row.raw.bookStock || "-"} ・ 差異:{" "}
-                  {formatDiff(computeStockDiff(row))} ・ 既存商品:{" "}
+                  {formatStockDiff(computeStockDiff(row.parsed))} ・ 既存商品:{" "}
                   {row.resolved.productName
                     ? sanitizeForSpreadsheetDisplay(row.resolved.productName)
                     : "未登録"}
@@ -320,7 +321,7 @@ export default function InventoryImportFlow() {
                     <td className="px-3 py-2 text-on-surface-variant">{row.raw.categoryCode || "-"}</td>
                     <td className="px-3 py-2 text-on-surface-variant">{row.raw.actualStock || "-"}</td>
                     <td className="px-3 py-2 text-on-surface-variant">{row.raw.bookStock || "-"}</td>
-                    <td className="px-3 py-2 text-on-surface-variant">{formatDiff(computeStockDiff(row))}</td>
+                    <td className="px-3 py-2 text-on-surface-variant">{formatStockDiff(computeStockDiff(row.parsed))}</td>
                     <td className="px-3 py-2">
                       <StockStatusChip actualStock={row.parsed.actualStock} />
                     </td>

@@ -118,6 +118,13 @@ UTF-8 BOM付きで保存している(再生成する際もBOMを落とさない�
 `decodeCsvBytes`はBOMの有無に関わらずUTF-8・CP932(Shift_JIS)を読み込めるため、
 本ファイルへのBOM付与は取込・プレビュー処理に影響しない。
 
+**2026-09-08追記(新3D向け40商品版)**:
+[`public/samples/inventory-count-realistic-store.csv`](../public/samples/inventory-count-realistic-store.csv)
+は、新3D店舗(`store-3d-realistic-demo`)向けに登録済みの40商品(JANコード
+`4901234700001`〜`4901234700040`、8カテゴリ×5商品)分の棚卸しデータ。列仕様・文字コード
+(UTF-8 BOM付き)は上記のサンプルCSVと同じで、`unit`は全行「個」に統一している。
+上記サンプルCSVとは別ファイルであり、互いに上書きしない。
+
 ## 8. 未確認事項
 
 - 実ブラウザでのCSVアップロード・プレビュー表示・確定保存の動作
@@ -147,3 +154,23 @@ UTF-8 BOM付きで保存している(再生成する際もBOMを落とさない�
 (利用者が「売り場を選択」で別の売り場に切り替えた場合は、その売り場自身の在庫情報を
 再取得していないため表示しない)。Canvasの再マウント・GLBの再取得・BFS/経路計算は
 在庫状態の表示によって一切変更しない。
+
+## 10. 棚卸履歴一覧(2026-09-08追記)
+
+`/admin/inventory`画面のCSV取込フローの下に、確定取込済みの`inventory_counts`を一覧表示する
+「最近の棚卸結果」セクションを追加した(`InventoryHistoryList`)。取得は読み取り専用の
+`GET /api/admin/inventory/history`(`requireAdminSession`必須。認証済み管理者の`store_id`で
+絞り込み、他店舗のデータは返さない。クエリのstore_id指定は受け付けない)。
+
+- 並び順は`counted_at`降順→`created_at`降順(8.の最新在庫解決と同じ安定順)
+- 初期表示50件、`limit`/`offset`によるページング(`さらに表示`で追加取得。全件を一度に
+  読み込まない)。`limit`は1〜200の整数、`offset`は0以上の整数のみ許可し、それ以外は400を返す
+- `shelf`(Shelf_01〜08)・`stock`(`available`/`outOfStock`)はサーバー側の実フィルタ。
+  未知の値は400を返す(棚コード・在庫状態を機械的に検証する)
+- 商品名・SKU・JAN検索、および「差異ありのみ」は表示中データへのクライアント側フィルタ
+  (PostgRESTの制約上、ネイティブ列と結合先テーブル列を1つのOR条件で安全にページングと
+  両立させる方法がなかったため)
+- `product_name`自体は`inventory_counts`に保存していないため、`products.name`が解決できた
+  行だけ商品名を表示し、できない行は「(商品未登録)」と表示する(推測した名前は出さない)
+- CSV確定取込が成功すると、ページ全体をリロードせずこの一覧だけを再取得する
+  (`InventoryImportFlow`の`onImportSuccess`→`InventoryAdminPanel`の再取得トリガー)

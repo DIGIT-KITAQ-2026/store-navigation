@@ -1,5 +1,5 @@
 import { AdminHeader } from "@/components/ui/AdminHeader";
-import InventoryImportFlow from "@/components/features/InventoryImportFlow";
+import InventoryAdminPanel from "@/components/features/InventoryAdminPanel";
 
 export default function AdminInventoryPage() {
   return (
@@ -13,7 +13,7 @@ export default function AdminInventoryPage() {
       />
 
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 md:px-8">
-        <InventoryImportFlow />
+        <InventoryAdminPanel />
       </main>
     </div>
   );

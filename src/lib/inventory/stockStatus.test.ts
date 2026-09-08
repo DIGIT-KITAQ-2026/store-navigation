@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveStockStatusKind, buildStockInfo, UNKNOWN_STOCK_INFO, formatCountedAtUtc } from "./stockStatus";
+import {
+  resolveStockStatusKind,
+  buildStockInfo,
+  UNKNOWN_STOCK_INFO,
+  formatCountedAtUtc,
+  computeStockDiff,
+  formatStockDiff,
+  formatStockDiffWithUnit,
+} from "./stockStatus";
 
 test("resolveStockStatusKind: 1以上はavailable", () => {
   assert.equal(resolveStockStatusKind(1), "available");
@@ -37,4 +45,30 @@ test("buildStockInfo: 実在庫0はoutOfStockとして保持する(削除・除�
 
 test("formatCountedAtUtc: UTC値をローカルタイムゾーンへ変換せずに整形する", () => {
   assert.equal(formatCountedAtUtc("2026-09-06T09:30:00.000Z"), "2026-09-06 09:30");
+});
+
+test("computeStockDiff: actual_stock - book_stock", () => {
+  assert.equal(computeStockDiff({ actualStock: 30, bookStock: 30 }), 0);
+  assert.equal(computeStockDiff({ actualStock: 35, bookStock: 30 }), 5);
+  assert.equal(computeStockDiff({ actualStock: 0, bookStock: 10 }), -10);
+});
+
+test("computeStockDiff: どちらかがnullならnull", () => {
+  assert.equal(computeStockDiff({ actualStock: null, bookStock: 30 }), null);
+  assert.equal(computeStockDiff({ actualStock: 30, bookStock: null }), null);
+});
+
+test("formatStockDiff: 符号付き文字列(単位なし)", () => {
+  assert.equal(formatStockDiff(5), "+5");
+  assert.equal(formatStockDiff(0), "0");
+  assert.equal(formatStockDiff(-10), "-10");
+  assert.equal(formatStockDiff(null), "-");
+});
+
+test("formatStockDiffWithUnit: 符号付き文字列(単位あり)", () => {
+  assert.equal(formatStockDiffWithUnit(5, "個"), "+5個");
+  assert.equal(formatStockDiffWithUnit(0, "個"), "0個");
+  assert.equal(formatStockDiffWithUnit(-10, "個"), "-10個");
+  assert.equal(formatStockDiffWithUnit(null, "個"), "-");
+  assert.equal(formatStockDiffWithUnit(3, null), "+3");
 });

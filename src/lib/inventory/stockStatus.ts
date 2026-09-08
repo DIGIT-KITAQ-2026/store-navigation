@@ -72,3 +72,25 @@ export function buildStockInfo(
     countedAt: row.countedAt,
   };
 }
+
+/**
+ * actual_stock - book_stock。どちらかが未確定(null)の場合はnull(表示は"-")。
+ * CSVプレビュー表・棚卸履歴一覧の両方でこの計算を共有する。
+ */
+export function computeStockDiff(row: { actualStock: number | null; bookStock: number | null }): number | null {
+  if (row.actualStock === null || row.bookStock === null) return null;
+  return row.actualStock - row.bookStock;
+}
+
+/** 差異を符号付きで整形する(単位なし。CSVプレビュー表の「差異」列で使用)。 */
+export function formatStockDiff(diff: number | null): string {
+  if (diff === null) return "-";
+  return diff > 0 ? `+${diff}` : `${diff}`;
+}
+
+/** 差異を単位付きで整形する(例: "+5個" "0個" "-10個")。棚卸履歴一覧で使用。 */
+export function formatStockDiffWithUnit(diff: number | null, unit: string | null): string {
+  if (diff === null) return "-";
+  const unitLabel = unit ?? "";
+  return diff > 0 ? `+${diff}${unitLabel}` : `${diff}${unitLabel}`;
+}
