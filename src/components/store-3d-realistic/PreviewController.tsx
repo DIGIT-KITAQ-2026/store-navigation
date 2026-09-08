@@ -34,6 +34,12 @@ export default function PreviewController({ mobile, movement, onLockChange, onLo
       try { Promise.resolve(element.requestPointerLock()).catch(lockError); } catch { lockError(); }
     };
     const look = (dx: number, dy: number, sensitivity: number) => {
+      // デフォルトのオイラー角順序(XYZ)のままrotation.x/yを直接操作すると、ピッチ(上下)が
+      // 0でない状態でヨー(左右)だけ動かした際に見た目上ロールがかかったように斜めへ動いてしまう。
+      // 一人称カメラの定石通りYXZ(ヨーを外側、ピッチを内側)にすることで、真横操作が常に
+      // 水平のヨー回転だけになるようにする(Three.js公式PointerLockControlsと同じ対処)。
+      // 毎回代入するのは、他の場所でカメラのorderが変わっていた場合の保険も兼ねる(コスト無視できる)。
+      camera.rotation.order = "YXZ";
       camera.rotation.y -= Math.max(-60, Math.min(60, dx)) * sensitivity;
       camera.rotation.x = Math.max(-Math.PI * 85 / 180, Math.min(Math.PI * 85 / 180, camera.rotation.x - Math.max(-60, Math.min(60, dy)) * sensitivity));
     };
