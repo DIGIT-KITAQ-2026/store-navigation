@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   if (!catalogResult) {
     return Response.json({ error: "店舗・商品情報の取得に失敗しました" }, { status: 500 });
   }
-  const { catalog, locationCodeByProductId } = catalogResult;
+  const { catalog, locationCodeByProductId, stockInfoByProductId } = catalogResult;
 
   const imageBuffer = Buffer.from(await image.arrayBuffer());
 
@@ -61,7 +61,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "画像検索に失敗しました。テキストで検索してください。" }, { status: 502 });
   }
 
-  const results: SearchResultItem[] = mapMatchesToResults(matches, catalog, locationCodeByProductId);
+  const results: SearchResultItem[] = mapMatchesToResults(
+    matches,
+    catalog,
+    locationCodeByProductId,
+    stockInfoByProductId
+  );
   const translatedProducts = await translateProducts(
     results.map((result) => result.product),
     locale

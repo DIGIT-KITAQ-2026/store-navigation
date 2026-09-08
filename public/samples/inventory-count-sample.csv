@@ -1,4 +1,4 @@
-store_code,shelf_code,sku,product_name,category_code,actual_stock,counted_at,jan_code,book_stock,unit,cost_price,selling_price
+﻿store_code,shelf_code,sku,product_name,category_code,actual_stock,counted_at,jan_code,book_stock,unit,cost_price,selling_price
 DEMO-STORE-ENTRY-001,Shelf_01,SKU-0001,菓子(デモ),CAT_01,25,2026-09-06 09:00,,20,個,80,120
 DEMO-STORE-ENTRY-001,Shelf_02,SKU-0002,ノート(デモ),CAT_02,40,2026-09-06 09:00,,35,冊,90,150
 DEMO-STORE-ENTRY-001,Shelf_03,SKU-0003,乾電池(デモ),CAT_03,60,2026-09-06 09:00,,50,本,60,100

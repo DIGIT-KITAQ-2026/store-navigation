@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (!catalogResult) {
     return Response.json({ error: "店舗・商品情報の取得に失敗しました" }, { status: 500 });
   }
-  const { catalog, locationCodeByProductId, categoryIdByProductId } = catalogResult;
+  const { catalog, locationCodeByProductId, categoryIdByProductId, stockInfoByProductId } = catalogResult;
 
   // カテゴリDB(category_keywords)による検索。DBが未適用/障害中でも既存検索を止めないよう、
   // fetchCategoryKeywordIndex自体が内部で失敗を吸収して空配列を返す(詳細はそちらのコメント参照)。
@@ -60,7 +60,12 @@ export async function POST(request: Request) {
 
   // カテゴリ一致商品を優先しつつ、既存検索(文字列一致→意味検索)内部の順序は変更しない
   const mergedMatches = mergeSearchMatches(categoryMatches, matches);
-  const results: SearchResultItem[] = mapMatchesToResults(mergedMatches, catalog, locationCodeByProductId);
+  const results: SearchResultItem[] = mapMatchesToResults(
+    mergedMatches,
+    catalog,
+    locationCodeByProductId,
+    stockInfoByProductId
+  );
   const translatedProducts = await translateProducts(
     results.map((result) => result.product),
     locale

@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude";
 import type { SearchResultItem } from "@/types/product";
+import { fetchLatestStockForStore, resolveLatestStock } from "@/lib/inventory/latestStock";
+import { buildStockInfo, UNKNOWN_STOCK_INFO, type StockInfo } from "@/lib/inventory/stockStatus";
 
 function toShelfNumber(locationCode: string): string {
   return locationCode.replace(/^Shelf_/, "");
@@ -12,6 +14,7 @@ export async function fetchStoreCatalog(supabase: SupabaseClient<Database>): Pro
   catalog: CatalogItem[];
   locationCodeByProductId: Map<string, string>;
   categoryIdByProductId: Map<string, string>;
+  stockInfoByProductId: Map<string, StockInfo>;
 } | null> {
   const { data: store, error: storeError } = await supabase
     .from("stores")
@@ -23,7 +26,7 @@ export async function fetchStoreCatalog(supabase: SupabaseClient<Database>): Pro
 
   const { data: products, error: productsError } = await supabase
     .from("products")
-    .select("id, name, category, category_id, description, shelves(shelf_locations(location_code))")
+    .select("id, name, category, category_id, description, shelves(shelf_locations(id, location_code))")
     .eq("store_id", store.id);
 
   if (productsError) return null;
@@ -37,20 +40,40 @@ export async function fetchStoreCatalog(supabase: SupabaseClient<Database>): Pro
 
   const locationCodeByProductId = new Map<string, string>();
   const categoryIdByProductId = new Map<string, string>();
+  const shelfLocationIdByProductId = new Map<string, string>();
   for (const product of products ?? []) {
-    const locationCode = product.shelves?.shelf_locations?.location_code;
-    if (locationCode) locationCodeByProductId.set(product.id, locationCode);
+    const shelfLocation = product.shelves?.shelf_locations;
+    if (shelfLocation?.location_code) locationCodeByProductId.set(product.id, shelfLocation.location_code);
+    if (shelfLocation?.id) shelfLocationIdByProductId.set(product.id, shelfLocation.id);
     if (product.category_id) categoryIdByProductId.set(product.id, product.category_id);
   }
 
-  return { catalog, locationCodeByProductId, categoryIdByProductId };
+  const stockMaps = await fetchLatestStockForStore(
+    supabase,
+    store.id,
+    (products ?? []).map((product) => ({
+      productId: product.id,
+      shelfLocationId: shelfLocationIdByProductId.get(product.id) ?? null,
+    }))
+  );
+  const stockInfoByProductId = new Map<string, StockInfo>();
+  for (const product of products ?? []) {
+    const target = {
+      productId: product.id,
+      shelfLocationId: shelfLocationIdByProductId.get(product.id) ?? null,
+    };
+    stockInfoByProductId.set(product.id, buildStockInfo(resolveLatestStock(target, stockMaps)));
+  }
+
+  return { catalog, locationCodeByProductId, categoryIdByProductId, stockInfoByProductId };
 }
 
 /** AIの一致結果を、実在するカタログ商品・棚位置とだけ突き合わせてUI表示用の形に変換する */
 export function mapMatchesToResults(
   matches: ClaudeSearchMatch[],
   catalog: CatalogItem[],
-  locationCodeByProductId: Map<string, string>
+  locationCodeByProductId: Map<string, string>,
+  stockInfoByProductId: Map<string, StockInfo>
 ): SearchResultItem[] {
   const catalogById = new Map(catalog.map((item) => [item.id, item]));
 
@@ -68,6 +91,7 @@ export function mapMatchesToResults(
           shelfId: locationCode,
           shelfNumber: toShelfNumber(locationCode),
           description: product.description ?? "",
+          stock: stockInfoByProductId.get(product.id) ?? UNKNOWN_STOCK_INFO,
         },
         matchReason: match.reason,
       };

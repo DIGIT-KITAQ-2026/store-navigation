@@ -40,6 +40,8 @@ export interface InventoryCsvRowResult {
     categoryId: string | null;
     shelfLocationId: string | null;
     productId: string | null;
+    /** productIdが解決できた場合の商品名(プレビュー表示用)。未解決ならnull */
+    productName: string | null;
   };
 }
 
@@ -151,7 +153,7 @@ export async function validateInventoryCsv(
           sellingPrice: "",
         },
         parsed: { actualStock: null, bookStock: null, costPrice: null, sellingPrice: null, countedAtIso: null },
-        resolved: { categoryId: null, shelfLocationId: null, productId: null },
+        resolved: { categoryId: null, shelfLocationId: null, productId: null, productName: null },
       };
     }
 
@@ -218,7 +220,7 @@ export async function validateInventoryCsv(
         sellingPrice,
         countedAtIso,
       },
-      resolved: { categoryId: null, shelfLocationId: null, productId: null },
+      resolved: { categoryId: null, shelfLocationId: null, productId: null, productName: null },
     };
   });
 
@@ -264,7 +266,7 @@ export async function validateInventoryCsv(
   const janCodes = [...new Set(rows.map((row) => row.raw.janCode).filter((code) => code.length > 0))];
   const { data: productsData, error: productsError } =
     janCodes.length > 0
-      ? await supabase.from("products").select("id, barcode, store_id, category_id").in("barcode", janCodes)
+      ? await supabase.from("products").select("id, name, barcode, store_id, category_id").in("barcode", janCodes)
       : { data: [], error: null };
   if (productsError) throw productsError;
   const productByBarcode = new Map((productsData ?? []).map((product) => [product.barcode, product]));
@@ -301,6 +303,7 @@ export async function validateInventoryCsv(
         row.status = "error";
       } else if (product) {
         row.resolved.productId = product.id;
+        row.resolved.productName = product.name;
         if (category && product.category_id && product.category_id !== category.id) {
           row.messages.push("category_codeが登録済み商品のカテゴリと一致しません。");
           row.status = "error";

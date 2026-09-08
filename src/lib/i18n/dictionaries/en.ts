@@ -52,6 +52,15 @@ const en: Dictionary = {
     guideShowing: "Showing 3D guide",
     guideStart: "Start 3D guide",
     guideMessage: "Showing directions to {label} on the 3D store map",
+    actionNavigateToShelf: "Guide me to this shelf",
+    actionCheckShelf: "Check the shelf",
+  },
+  stock: {
+    availableLabel: "In stock",
+    outOfStockLabel: "Out of stock",
+    unknownLabel: "Stock unknown",
+    quantity: "{count}{unit} in stock",
+    lastCounted: "Last checked {datetime}",
   },
   navigate: {
     backToSearch: "Back to results",
