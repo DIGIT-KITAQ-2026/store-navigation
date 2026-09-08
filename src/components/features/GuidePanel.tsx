@@ -2,6 +2,8 @@
 
 import type { Product } from "@/types/product";
 import { useTranslations, format } from "@/lib/i18n/useTranslations";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { translateUnit } from "@/lib/i18n/unitLabels";
 import StockBadge from "@/components/ui/StockBadge";
 import { formatCountedAtUtc } from "@/lib/inventory/stockStatus";
 
@@ -23,6 +25,7 @@ export default function GuidePanel({
   onStartGuide,
 }: GuidePanelProps) {
   const t = useTranslations();
+  const { locale } = useLocale();
   const { stock } = product;
   const guideActionLabel = stock.kind === "available" ? t.guide.actionNavigateToShelf : t.guide.actionCheckShelf;
 
@@ -51,7 +54,10 @@ export default function GuidePanel({
         <StockBadge stock={stock} />
         {stock.kind !== "unknown" && (
           <p className="text-sm text-on-surface-variant">
-            {format(t.stock.quantity, { count: stock.actualStock ?? 0, unit: stock.unit ?? "" })}
+            {format(t.stock.quantity, {
+              count: stock.actualStock ?? 0,
+              unit: stock.unit ? translateUnit(stock.unit, locale) : "",
+            })}
           </p>
         )}
         {stock.countedAt !== null && (
