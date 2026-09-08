@@ -10,6 +10,7 @@ import { STOCK_STATUS_SYMBOLS, type StockInfo } from "@/lib/inventory/stockStatu
 import type { Dictionary } from "@/lib/i18n/dictionaries/ja";
 import { format } from "@/lib/i18n/useTranslations";
 import { translateCategory } from "@/lib/i18n/categoryLabels";
+import { translateUnit } from "@/lib/i18n/unitLabels";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 
 export type Playback = "idle" | "playing" | "paused" | "arrived" | "blocked";
@@ -65,7 +66,7 @@ export default function RealisticStoreControls(props: Props) {
           <p className={styles.stock} data-kind={stock.kind}>
             <span aria-hidden>{STOCK_STATUS_SYMBOLS[stock.kind]}</span>
             {stockLabel}
-            {stock.kind !== "unknown" && ` ${stock.actualStock ?? 0}${stock.unit ?? ""}`}
+            {stock.kind !== "unknown" && ` ${stock.actualStock ?? 0}${stock.unit ? translateUnit(stock.unit, locale) : ""}`}
           </p>
         )}
       </section>
