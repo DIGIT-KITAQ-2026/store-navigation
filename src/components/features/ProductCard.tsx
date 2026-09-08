@@ -3,6 +3,8 @@
 import Link from "next/link";
 import type { SearchResultItem } from "@/types/product";
 import { useTranslations, format } from "@/lib/i18n/useTranslations";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { translateUnit } from "@/lib/i18n/unitLabels";
 import StockBadge from "@/components/ui/StockBadge";
 
 interface ProductCardProps {
@@ -12,6 +14,7 @@ interface ProductCardProps {
 export default function ProductCard({ item }: ProductCardProps) {
   const { product, matchReason } = item;
   const t = useTranslations();
+  const { locale } = useLocale();
   const { stock } = product;
   // 在庫なし・在庫情報なしでも商品案内は妨げない。ボタン文言だけ状態に応じて出し分ける
   // (棚へ案内する/売場で確認してもらう、のどちらの導線も同じ/navigate/[id]へ遷移する)。
@@ -41,7 +44,10 @@ export default function ProductCard({ item }: ProductCardProps) {
         <StockBadge stock={stock} />
         {stock.kind !== "unknown" && (
           <span className="text-xs font-medium text-on-surface-variant">
-            {format(t.stock.quantity, { count: stock.actualStock ?? 0, unit: stock.unit ?? "" })}
+            {format(t.stock.quantity, {
+              count: stock.actualStock ?? 0,
+              unit: stock.unit ? translateUnit(stock.unit, locale) : "",
+            })}
           </span>
         )}
       </div>
