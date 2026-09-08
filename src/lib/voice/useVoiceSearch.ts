@@ -10,9 +10,12 @@ import { useEffect, useRef, useState } from "react";
  * 使っているが、ブラウザ内で動かせる大きさのモデル(whisper-tiny)では日本語の精度が
  * 実用に耐えなかったため、CLIP検索と同じくサーバー側で大きいモデルを動かす方式にした。
  *
- * 音声はブラウザ側でAudioContextを使って16kHz・モノラルのPCMまで復号し、
- * 16bit整数に落として送る。サーバーにwebm/opusのデコーダを持たせずに済む。
+ * 音声はブラウザ側で16kHz・モノラルのPCMまで復号し、16bit整数に落として送る。
+ * サーバーにwebm/opusのデコーダを持たせずに済む。
  */
+
+/** Whisperが前提とするサンプリングレート */
+const TARGET_SAMPLE_RATE = 16_000;
 export function useVoiceSearch(onResult: (text: string) => void) {
   const [isSupported, setIsSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -38,6 +41,14 @@ export function useVoiceSearch(onResult: (text: string) => void) {
         typeof MediaRecorder !== "undefined"
     );
 
+    // localhost以外のhttp://ではブラウザがマイクを一切使わせないため、
+    // 対応していない端末なのか、開き方の問題なのかを区別できるようにしておく
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      setError(
+        "この開き方ではマイクを使えません。https:// か localhost で開いてください"
+      );
+    }
+
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
@@ -53,15 +64,37 @@ export function useVoiceSearch(onResult: (text: string) => void) {
     return samples;
   };
 
+  /**
+   * 録音データを16kHz・モノラルのPCMに変換する。
+   *
+   * 以前は`new AudioContext({ sampleRate: 16000 })`で復号と同時にレート変換していたが、
+   * Windowsでは音声デバイスが16kHzに対応していないとこの時点でNotSupportedErrorになり、
+   * 文字起こしが始まらないことがある。端末の既定レートで復号してから、
+   * デバイスに縛られないOfflineAudioContextでレート変換する方式にしている。
+   */
   const decodeToPcm16k = async (blob: Blob): Promise<Float32Array> => {
     const arrayBuffer = await blob.arrayBuffer();
-    const audioCtx = new AudioContext({ sampleRate: 16000 });
+
+    const decodeContext = new AudioContext();
+    let decoded: AudioBuffer;
     try {
-      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-      return audioBuffer.getChannelData(0);
+      decoded = await decodeContext.decodeAudioData(arrayBuffer);
     } finally {
-      await audioCtx.close();
+      await decodeContext.close();
     }
+
+    if (decoded.sampleRate === TARGET_SAMPLE_RATE && decoded.numberOfChannels === 1) {
+      return decoded.getChannelData(0);
+    }
+
+    // チャンネル数1で描画させることで、ステレオ録音もモノラルにまとめられる
+    const frameCount = Math.max(1, Math.ceil(decoded.duration * TARGET_SAMPLE_RATE));
+    const offline = new OfflineAudioContext(1, frameCount, TARGET_SAMPLE_RATE);
+    const source = offline.createBufferSource();
+    source.buffer = decoded;
+    source.connect(offline.destination);
+    source.start();
+    return (await offline.startRendering()).getChannelData(0);
   };
 
   const transcribe = async (pcm: Float32Array) => {
@@ -84,7 +117,8 @@ export function useVoiceSearch(onResult: (text: string) => void) {
       } else {
         setError("音声が聞き取れませんでした。もう一度お試しください");
       }
-    } catch {
+    } catch (requestError) {
+      console.error("[useVoiceSearch] 文字起こしの要求に失敗しました", requestError);
       setError("文字起こしに失敗しました");
     } finally {
       setIsTranscribing(false);
@@ -124,15 +158,24 @@ export function useVoiceSearch(onResult: (text: string) => void) {
 
         try {
           await transcribe(await decodeToPcm16k(blob));
-        } catch {
-          setError("録音データの処理に失敗しました");
+        } catch (decodeError) {
+          // 原因の切り分けができるよう、握りつぶさず種類を残す
+          console.error("[useVoiceSearch] 録音データの変換に失敗しました", decodeError);
+          const reason = decodeError instanceof Error ? decodeError.name : "";
+          setError(`録音データの処理に失敗しました${reason ? `(${reason})` : ""}`);
         }
       };
 
       mediaRecorder.start();
       setIsListening(true);
-    } catch {
-      setError("マイクの使用が許可されていません。ブラウザの設定を確認してください");
+    } catch (mediaError) {
+      console.error("[useVoiceSearch] マイクを開けませんでした", mediaError);
+      const name = mediaError instanceof Error ? mediaError.name : "";
+      setError(
+        name === "NotFoundError"
+          ? "マイクが見つかりません。接続と既定のデバイス設定を確認してください"
+          : "マイクの使用が許可されていません。ブラウザの設定を確認してください"
+      );
     }
   };
 
