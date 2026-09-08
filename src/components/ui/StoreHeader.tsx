@@ -6,13 +6,15 @@ import Link from "next/link";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { useTranslations } from "@/lib/i18n/useTranslations";
 
-const FALLBACK_STORE_NAME = "Smart Store Navi";
+/**
+ * ヘッダーはどの画面でもサービス名を出す。
+ * 以前はSupabaseの店舗名(「実演用デモ店舗」)を出していたが、店舗検索→支店検索→商品検索の
+ * 3段階になり、店舗を選ぶ前の画面で特定の店舗名が出るのがおかしくなったため固定にした。
+ * 管理者画面のヘッダー(AdminHeader)と同じ表記に揃えている。
+ */
+const SERVICE_NAME = "Smart Store Navi";
 
-interface StoreHeaderProps {
-  storeName: string | null;
-}
-
-export default function StoreHeader({ storeName }: StoreHeaderProps) {
+export default function StoreHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const t = useTranslations();
 
@@ -27,9 +29,7 @@ export default function StoreHeader({ storeName }: StoreHeaderProps) {
             height={40}
             className="h-8 w-8 shrink-0 object-contain md:h-10 md:w-10"
           />
-          <p className="min-w-0 truncate text-xl font-bold text-on-surface">
-            {storeName ?? FALLBACK_STORE_NAME}
-          </p>
+          <p className="min-w-0 truncate text-xl font-bold text-on-surface">{SERVICE_NAME}</p>
         </Link>
 
         <div className="relative shrink-0">

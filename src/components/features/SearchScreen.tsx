@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
 import SearchBar from "@/components/ui/SearchBar";
 import EmptyState from "@/components/ui/EmptyState";
 import SearchResults from "@/components/features/SearchResults";
@@ -22,6 +20,16 @@ interface SearchScreenProps {
 
 export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const router = useRouter();
+
+  // 商品検索画面のURLは支店ごとに異なる(/stores/<店舗>/<支店>)ため、固定のリンク先を持たず
+  // 履歴を1つ戻る。直接URLで開いた等で戻り先が無い場合だけ店舗検索から選び直してもらう
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
   const t = useTranslations();
   const { locale } = useLocale();
   // サーバーとクライアントの初回レンダーを一致させるため、ここではsessionStorage/pending画像を参照しない。
@@ -222,13 +230,14 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         </div>
 
         <div className="animate-fade-in-up flex items-center gap-3">
-          <Link
-            href="/"
+          <button
+            type="button"
+            onClick={handleBack}
             aria-label={t.common.back}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-variant"
           >
             <span className="material-symbols-outlined text-on-surface-variant">arrow_back</span>
-          </Link>
+          </button>
           <h1 className="text-xl font-bold text-on-surface md:text-2xl">
             {submittedQuery.trim().length > 0 ? (
               (() => {
@@ -249,13 +258,6 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
 
         {status === "loading" && (
           <div className="animate-fade-in-up flex flex-col items-center gap-3">
-            <Image
-              src="/images/design-reference/store-search-empty.png"
-              alt={t.search.heroImageAlt}
-              width={800}
-              height={400}
-              className="h-auto w-[176px] max-w-full object-contain opacity-90 md:w-[220px]"
-            />
             <p role="status" className="text-center text-sm font-medium text-on-surface-variant">
               {t.search.loading}
             </p>
@@ -271,7 +273,7 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
         )}
 
         {status === "no-results" && (
-          <EmptyState message={imageSearchError ?? t.search.noResults} showImage />
+          <EmptyState message={imageSearchError ?? t.search.noResults} />
         )}
 
         {status === "has-results" && <SearchResults results={results} />}
