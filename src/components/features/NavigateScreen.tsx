@@ -32,7 +32,11 @@ export default function NavigateScreen({ product }: { product: Product }) {
         <span className="ml-auto text-sm text-slate-600">{t.navigate.productGuideLabel}</span>
       </header>
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="relative h-[calc(100svh-8rem)] min-h-[480px] min-w-0 flex-1 overflow-hidden lg:h-auto lg:min-h-0">
+        {/* スマホでは高さの指定をそのまま効かせる。flex-1を付けたままだとフレックス項目として
+            扱われ、親の高さが未確定なため指定した高さが無視されてmin-heightまで縮み、
+            さらに中のh-full(=height:100%)も解決できずcanvasが既定の150pxのままになる。
+            横並びになるPCでは幅を分け合う必要があるためflex-1を残す */}
+        <div className="relative h-[calc(100svh-8rem)] min-h-[480px] min-w-0 overflow-hidden lg:h-auto lg:min-h-0 lg:flex-1">
           {destination ? <RealisticStoreViewer initialShelfId={destination} destinationStock={product.stock} locale={locale} /> : (
             <div className="flex h-full items-center justify-center bg-stone-100 p-6">
               <p role="status" className="max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">{t.guide.pendingLocation}</p>
