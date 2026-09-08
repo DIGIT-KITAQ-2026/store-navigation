@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import type { MovementInput, Vector3Tuple } from "@/lib/store-navigation/types";
@@ -45,6 +45,13 @@ export default function RealisticStoreScene({
   const reducedMotion = usePrefersReducedMotion();
   const onReady = useCallback((value: RealisticLayout) => setLayout(value), []);
   const onLockError = useCallback(() => setLockFailed(true), []);
+  // macOS(特にSafari)はPointer Lock解除直後の再取得を短時間拒否することがあり、その1回のpointerlockerrorで
+  // 視点操作を開始ボタンが消えたままだと再入手段が失われる。クールダウンより十分長い時間で自動的に再表示する
+  useEffect(() => {
+    if (!lockFailed) return;
+    const timer = window.setTimeout(() => setLockFailed(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [lockFailed]);
   const onArrive = useCallback(() => setPlayback("arrived"), []);
   const onBlocked = useCallback(() => setPlayback("blocked"), []);
   const changeControl = async (action: () => void) => {

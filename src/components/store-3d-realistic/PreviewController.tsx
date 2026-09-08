@@ -6,6 +6,7 @@ import { Vector3 } from "three";
 import { EYE_HEIGHT } from "@/lib/store-navigation/store-layout";
 import type { MovementInput } from "@/lib/store-navigation/types";
 import { moveWithinLayout, type RealisticLayout } from "@/lib/store-navigation/realistic-store-layout";
+import { computeWalkAxes, shouldTrackWalkKeyDown } from "@/lib/store-navigation/keyboardMovement";
 
 export const PREVIEW_LOCK_ID = "realistic-store-start";
 
@@ -52,9 +53,8 @@ export default function PreviewController({ mobile, movement, onLockChange, onLo
       drag = null;
       if (element.hasPointerCapture(e.pointerId)) element.releasePointerCapture(e.pointerId);
     };
-    const codes = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
     const keyDown = (e: KeyboardEvent) => {
-      if (document.pointerLockElement !== element || !codes.has(e.code)) return;
+      if (!shouldTrackWalkKeyDown(e, document.pointerLockElement === element)) return;
       e.preventDefault(); pressed.add(e.code);
     };
     const keyUp = (e: KeyboardEvent) => { pressed.delete(e.code); };
@@ -84,9 +84,7 @@ export default function PreviewController({ mobile, movement, onLockChange, onLo
 
   useFrame((_, delta) => {
     if (document.hidden || (!mobile && document.pointerLockElement !== gl.domElement)) return;
-    const k = keys.current;
-    const f = Number(k.has("KeyW") || k.has("ArrowUp")) - Number(k.has("KeyS") || k.has("ArrowDown")) + (mobile ? movement.current.forward : 0);
-    const r = Number(k.has("KeyD") || k.has("ArrowRight")) - Number(k.has("KeyA") || k.has("ArrowLeft")) + (mobile ? movement.current.right : 0);
+    const { forward: f, right: r } = computeWalkAxes(keys.current, mobile, movement.current);
     if (!Number.isFinite(f) || !Number.isFinite(r)) return;
     camera.getWorldDirection(forward.current); forward.current.y = 0; forward.current.normalize();
     right.current.crossVectors(forward.current, camera.up).normalize();
