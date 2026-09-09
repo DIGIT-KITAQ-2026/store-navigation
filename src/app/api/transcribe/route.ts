@@ -1,4 +1,5 @@
 import { loadTranscriber, transcribeJapanese } from "@/lib/voice/transcribeAudio";
+import { getInferenceBaseUrl } from "@/lib/aiInference/inferenceProxy";
 
 /** 16kHzモノラルなので、この長さで約60秒ぶん。検索の入力としては十分 */
 const MAX_SAMPLES = 16_000 * 60;
@@ -11,11 +12,16 @@ const MAX_SAMPLES = 16_000 * 60;
  * 本文はInt16のリトルエンディアン配列そのもの(application/octet-stream)。
  */
 export async function POST(request: Request) {
-  // 録音中にモデルの読み込みを先行させるためのウォームアップ要求(本文なし)
+  // 録音中にモデルの読み込みを先行させるためのウォームアップ要求(本文なし)。
+  // AI_INFERENCE_BASE_URLが設定されている(=Vercel等、モデルをこのプロセスで持たない)場合は
+  // ここでloadTranscriber()を呼ぶとVercel上でモデル読み込みを試みてしまうため何もしない
+  // (推論サーバー側は常時稼働でモデルを保持し続けている前提のため、都度のウォームアップ自体が不要)
   if (request.headers.get("x-warmup") === "1") {
-    loadTranscriber().catch((error) => {
-      console.error("[api/transcribe] モデルの事前読み込みに失敗しました", error);
-    });
+    if (!getInferenceBaseUrl()) {
+      loadTranscriber().catch((error) => {
+        console.error("[api/transcribe] モデルの事前読み込みに失敗しました", error);
+      });
+    }
     return Response.json({ ok: true });
   }
 

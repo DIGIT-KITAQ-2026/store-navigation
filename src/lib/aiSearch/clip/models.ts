@@ -1,18 +1,13 @@
-import { pipeline } from "@huggingface/transformers";
+import type { pipeline } from "@huggingface/transformers";
 import type { Locale } from "@/lib/i18n/locales";
+import { getInferenceBaseUrl, callInferenceServer } from "@/lib/aiInference/inferenceProxy";
 
 /**
- * CLIP系モデルの読み込み。プロセス内で1度だけ読み込み、以降は使い回す。
+ * 検索に使うモデルの読み込み。プロセス内で1度だけ読み込み、以降は使い回す。
  * 初回リクエストのみモデルのダウンロード・初期化で時間がかかる。
  *
- * - テキスト側: clip-ViT-B-32-multilingual-v1(50言語以上対応)。日本語のクエリ・商品名を
- *   同じベクトル空間に埋め込む。英語の語句とも意味が近ければ近い位置に来るため、
- *   画像検索(英語ラベル経由)からの照合にも使える。
- * - 画像側: CLIPのゼロショット画像分類。英語のラベル候補に対するスコアを返す。
- *
- * ※ 日本語で直接画像照合できるCLIP(jina-clip-v2等)はONNX配布が揃っておらず、
- *   多言語テキストモデルは射影層が無く画像ベクトル(512次元)と次元が合わないため、
- *   「画像→英語ラベル→多言語埋め込み→日本語商品」という経路にしている。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、実行を外部の推論サーバーへ委譲する
+ * (Vercel等モデルを実行できない環境向け)。未設定ならこのプロセス内で実行する。
  */
 
 /**
@@ -29,7 +24,15 @@ import type { Locale } from "@/lib/i18n/locales";
  * どちらも検索語と文書側に別の接頭辞を付けて使う前提で学習されているモデルなので、
  * 接頭辞を付けずに使うと精度が落ちる(embedQuery/embedPassagesを必ず経由すること)。
  */
+export type TextModelKey = "japanese" | "multilingual";
+
 export interface TextModel {
+  /**
+   * 内部API(/api/internal/embed-text)へどのモデルを使うか伝えるための識別子。
+   * モデル名をそのまま受け取ると、外部に公開されるエンドポイントに任意のモデルを
+   * 読み込ませられてしまうため、ここに定義した2つだけを指せるようにしている。
+   */
+  key: TextModelKey;
   id: string;
   queryPrefix: string;
   passagePrefix: string;
@@ -41,6 +44,7 @@ export interface TextModel {
 }
 
 const JAPANESE_TEXT_MODEL: TextModel = {
+  key: "japanese",
   id: "sirasagi62/ruri-v3-30m-ONNX",
   queryPrefix: "検索クエリ: ",
   passagePrefix: "検索文書: ",
@@ -48,6 +52,7 @@ const JAPANESE_TEXT_MODEL: TextModel = {
 };
 
 const MULTILINGUAL_TEXT_MODEL: TextModel = {
+  key: "multilingual",
   id: "Xenova/multilingual-e5-small",
   queryPrefix: "query: ",
   passagePrefix: "passage: ",
@@ -63,31 +68,34 @@ export function textModelFor(locale: Locale): TextModel {
   return locale === "ja" ? JAPANESE_TEXT_MODEL : MULTILINGUAL_TEXT_MODEL;
 }
 
+/** 内部APIが受け取った識別子からモデルを引く。知らない識別子はnull(モデルを読み込ませない) */
+export function textModelByKey(key: string): TextModel | null {
+  if (key === JAPANESE_TEXT_MODEL.key) return JAPANESE_TEXT_MODEL;
+  if (key === MULTILINGUAL_TEXT_MODEL.key) return MULTILINGUAL_TEXT_MODEL;
+  return null;
+}
+
 const VISION_MODEL = "Xenova/clip-vit-base-patch32";
 
 type TextEmbedder = Awaited<ReturnType<typeof pipeline<"feature-extraction">>>;
 type ImageEmbedder = Awaited<ReturnType<typeof pipeline<"image-feature-extraction">>>;
-type ImageClassifier = Awaited<ReturnType<typeof pipeline<"zero-shot-image-classification">>>;
 
 /** 読み込んだテキストモデルはモデルごとに使い回す(日本語用と多言語用が同居しうる) */
 const textEmbedderPromises = new Map<string, Promise<TextEmbedder>>();
-let imageClassifierPromise: Promise<ImageClassifier> | null = null;
 let imageEmbedderPromise: Promise<ImageEmbedder> | null = null;
 
+// `@huggingface/transformers`(と依存のonnxruntime-nodeネイティブバインディング)は
+// Vercel等のサーバーレス環境では読み込めない。プロキシ経由(`AI_INFERENCE_BASE_URL`設定時)では
+// このモジュールに一切触れないよう、staticインポートではなく実行時の動的importにする。
 export function getTextEmbedder(model: TextModel): Promise<TextEmbedder> {
   const loaded = textEmbedderPromises.get(model.id);
   if (loaded) return loaded;
 
-  const loading = pipeline("feature-extraction", model.id, { dtype: "fp32" });
+  const loading = import("@huggingface/transformers").then(({ pipeline }) =>
+    pipeline("feature-extraction", model.id, { dtype: "fp32" })
+  );
   textEmbedderPromises.set(model.id, loading);
   return loading;
-}
-
-export function getImageClassifier(): Promise<ImageClassifier> {
-  if (!imageClassifierPromise) {
-    imageClassifierPromise = pipeline("zero-shot-image-classification", VISION_MODEL, { dtype: "fp32" });
-  }
-  return imageClassifierPromise;
 }
 
 /**
@@ -96,17 +104,33 @@ export function getImageClassifier(): Promise<ImageClassifier> {
  */
 export function getImageEmbedder(): Promise<ImageEmbedder> {
   if (!imageEmbedderPromise) {
-    imageEmbedderPromise = pipeline("image-feature-extraction", VISION_MODEL, { dtype: "fp32" });
+    imageEmbedderPromise = import("@huggingface/transformers").then(({ pipeline }) =>
+      pipeline("image-feature-extraction", VISION_MODEL, { dtype: "fp32" })
+    );
   }
   return imageEmbedderPromise;
 }
 
-/** 文字列を正規化済み(長さ1)のベクトルへ変換する */
-async function embedTexts(texts: string[], model: TextModel): Promise<number[][]> {
-  if (texts.length === 0) return [];
+/** 文字列を正規化済み(長さ1)のベクトルへ変換する(このマシンでモデルを実際に動かす) */
+export async function embedTextsLocal(texts: string[], model: TextModel): Promise<number[][]> {
   const embedder = await getTextEmbedder(model);
   const output = await embedder(texts, { pooling: "mean", normalize: true });
   return output.tolist() as number[][];
+}
+
+/**
+ * 文字列を正規化済み(長さ1)のベクトルへ変換する。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、モデルをそのマシンへ委譲する。
+ */
+async function embedTexts(texts: string[], model: TextModel): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  if (getInferenceBaseUrl()) {
+    return callInferenceServer<number[][]>("/api/internal/embed-text", {
+      texts,
+      modelKey: model.key,
+    });
+  }
+  return embedTextsLocal(texts, model);
 }
 
 /** 検索語をベクトルにする */
@@ -121,6 +145,31 @@ export async function embedPassages(passages: string[], model: TextModel): Promi
     passages.map((passage) => `${model.passagePrefix}${passage}`),
     model
   );
+}
+
+/**
+ * 画像を512次元のベクトルへ変換する(このマシンでモデルを実際に動かす)。
+ * `imageBase64`はJPEG/PNG等のバイナリをbase64文字列化したもの。
+ */
+export async function embedImageLocal(imageBase64: string): Promise<number[]> {
+  const embedder = await getImageEmbedder();
+  const { RawImage } = await import("@huggingface/transformers");
+  const imageBuffer = Buffer.from(imageBase64, "base64");
+  const image = await RawImage.fromBlob(new Blob([new Uint8Array(imageBuffer)]));
+  const output = await embedder(image);
+  return Array.from(output.data as Float32Array);
+}
+
+/**
+ * 画像を512次元のベクトルへ変換する。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、モデルをそのマシンへ委譲する。
+ */
+export async function embedImage(imageBuffer: Buffer): Promise<number[]> {
+  const imageBase64 = imageBuffer.toString("base64");
+  if (getInferenceBaseUrl()) {
+    return callInferenceServer<number[]>("/api/internal/embed-image", { imageBase64 });
+  }
+  return embedImageLocal(imageBase64);
 }
 
 /** 正規化済みベクトル同士のコサイン類似度(内積と同値) */
