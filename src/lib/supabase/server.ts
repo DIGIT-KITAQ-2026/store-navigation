@@ -80,6 +80,10 @@ export interface AdminProductListItem {
  * 管理者用の商品一覧を取得する。単一デモ店舗のMVPスコープのため店舗を絞り込まず全件返す。
  * 棚が未配置の商品はlocationCodeがnullになる(呼び出し側で「未配置」等と表示する)。
  * /admin/products のServer Componentから呼び出す想定。
+ *
+ * category_idが未設定(100均カテゴリ導入前の旧スーパー想定データ)の商品は一覧に表示しない
+ * (消費者向け検索・商品詳細と同じ扱い。src/lib/aiSearch/catalog.tsのfetchStoreCatalog()、
+ * getProductWithShelfLocation()参照)。データの削除ではなく表示対象からの除外のみ。
  */
 export async function getAdminProductList(): Promise<AdminProductListItem[]> {
   try {
@@ -87,6 +91,7 @@ export async function getAdminProductList(): Promise<AdminProductListItem[]> {
     const { data, error } = await supabase
       .from("products")
       .select("id, barcode, name, category, description, shelves(shelf_locations(location_code))")
+      .not("category_id", "is", null)
       .order("name");
 
     if (error || !data) return [];
