@@ -1,4 +1,5 @@
 import { pipeline, type AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
+import { callInferenceServer, getInferenceBaseUrl } from "@/lib/aiInference/inferenceProxy";
 
 /**
  * 音声認識モデル。日本語の精度を優先してlarge-v3-turboを使う。
@@ -24,12 +25,31 @@ export function loadTranscriber(): Promise<AutomaticSpeechRecognitionPipeline> {
 }
 
 /**
- * 16kHz・モノラルのPCMを日本語として文字起こしする。
+ * 16kHz・モノラルのPCMを日本語として文字起こしする(このマシン上でモデルを実行する実体)。
  * `language`を固定しないと英語として書き起こされたり翻訳されたりするため必ず指定する。
+ * `/api/internal/transcribe`からも直接呼ばれる(プロキシ経由で無限ループしないよう、
+ * こちらは常にローカル実行のみを行う)。
  */
-export async function transcribeJapanese(audio: Float32Array): Promise<string> {
+export async function transcribeJapaneseLocal(audio: Float32Array): Promise<string> {
   const transcriber = await loadTranscriber();
   const output = await transcriber(audio, { language: "japanese", task: "transcribe" });
   const result = Array.isArray(output) ? output[0] : output;
   return typeof result?.text === "string" ? result.text.trim() : "";
+}
+
+/**
+ * 16kHz・モノラルのPCMを日本語として文字起こしする。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、Whisperモデルを持つ外部推論サーバーへ
+ * 転送する(Vercel上で動かす想定)。未設定ならこのプロセス内でモデルを実行する
+ * (今までのdevelopと完全に同じ挙動)。
+ */
+export async function transcribeJapanese(audio: Float32Array): Promise<string> {
+  const baseUrl = getInferenceBaseUrl();
+  if (baseUrl) {
+    const result = await callInferenceServer<{ text: string }>("/api/internal/transcribe", {
+      audio: Array.from(audio),
+    });
+    return result.text;
+  }
+  return transcribeJapaneseLocal(audio);
 }
