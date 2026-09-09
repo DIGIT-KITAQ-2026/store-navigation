@@ -1,4 +1,4 @@
-import { pipeline, type AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
+import type { AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
 import { callInferenceServer, getInferenceBaseUrl } from "@/lib/aiInference/inferenceProxy";
 
 /**
@@ -16,10 +16,17 @@ const MODEL_ID = "onnx-community/whisper-large-v3-turbo";
 
 let transcriberPromise: Promise<AutomaticSpeechRecognitionPipeline> | null = null;
 
-/** モデルの読み込みは初回のみ20秒ほどかかるため、プロセス内で使い回す */
+/**
+ * モデルの読み込みは初回のみ20秒ほどかかるため、プロセス内で使い回す。
+ * `@huggingface/transformers`(と依存のonnxruntime-nodeネイティブバインディング)は
+ * Vercel等のサーバーレス環境では読み込めない。プロキシ経由(`AI_INFERENCE_BASE_URL`設定時)では
+ * このモジュールに一切触れないよう、staticインポートではなく実行時の動的importにする。
+ */
 export function loadTranscriber(): Promise<AutomaticSpeechRecognitionPipeline> {
   if (!transcriberPromise) {
-    transcriberPromise = pipeline("automatic-speech-recognition", MODEL_ID, { dtype: "q4" });
+    transcriberPromise = import("@huggingface/transformers").then(({ pipeline }) =>
+      pipeline("automatic-speech-recognition", MODEL_ID, { dtype: "q4" })
+    );
   }
   return transcriberPromise;
 }

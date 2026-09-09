@@ -1,4 +1,4 @@
-import { pipeline, RawImage } from "@huggingface/transformers";
+import type { pipeline } from "@huggingface/transformers";
 import { getInferenceBaseUrl, callInferenceServer } from "@/lib/aiInference/inferenceProxy";
 
 /**
@@ -24,16 +24,23 @@ type ImageClassifier = Awaited<ReturnType<typeof pipeline<"zero-shot-image-class
 let textEmbedderPromise: Promise<TextEmbedder> | null = null;
 let imageClassifierPromise: Promise<ImageClassifier> | null = null;
 
+// `@huggingface/transformers`(と依存のonnxruntime-nodeネイティブバインディング)は
+// Vercel等のサーバーレス環境では読み込めない。プロキシ経由(`AI_INFERENCE_BASE_URL`設定時)では
+// このモジュールに一切触れないよう、staticインポートではなく実行時の動的importにする。
 export function getTextEmbedder(): Promise<TextEmbedder> {
   if (!textEmbedderPromise) {
-    textEmbedderPromise = pipeline("feature-extraction", TEXT_MODEL, { dtype: "fp32" });
+    textEmbedderPromise = import("@huggingface/transformers").then(({ pipeline }) =>
+      pipeline("feature-extraction", TEXT_MODEL, { dtype: "fp32" })
+    );
   }
   return textEmbedderPromise;
 }
 
 export function getImageClassifier(): Promise<ImageClassifier> {
   if (!imageClassifierPromise) {
-    imageClassifierPromise = pipeline("zero-shot-image-classification", VISION_MODEL, { dtype: "fp32" });
+    imageClassifierPromise = import("@huggingface/transformers").then(({ pipeline }) =>
+      pipeline("zero-shot-image-classification", VISION_MODEL, { dtype: "fp32" })
+    );
   }
   return imageClassifierPromise;
 }
@@ -68,6 +75,7 @@ export async function classifyImageLocal(
   labels: string[]
 ): Promise<Array<{ label: string; score: number }>> {
   const classifier = await getImageClassifier();
+  const { RawImage } = await import("@huggingface/transformers");
   const imageBuffer = Buffer.from(imageBase64, "base64");
   const image = await RawImage.fromBlob(new Blob([new Uint8Array(imageBuffer)]));
   return (await classifier(image, labels)) as Array<{ label: string; score: number }>;
