@@ -1,4 +1,5 @@
-import { pipeline } from "@huggingface/transformers";
+import { pipeline, RawImage } from "@huggingface/transformers";
+import { getInferenceBaseUrl, callInferenceServer } from "@/lib/aiInference/inferenceProxy";
 
 /**
  * CLIP系モデルの読み込み。プロセス内で1度だけ読み込み、以降は使い回す。
@@ -37,12 +38,59 @@ export function getImageClassifier(): Promise<ImageClassifier> {
   return imageClassifierPromise;
 }
 
-/** 文字列を正規化済み(長さ1)のベクトルへ変換する */
-export async function embedTexts(texts: string[]): Promise<number[][]> {
-  if (texts.length === 0) return [];
+/** 文字列を正規化済み(長さ1)のベクトルへ変換する(このマシンでモデルを実際に動かす) */
+export async function embedTextsLocal(texts: string[]): Promise<number[][]> {
   const embedder = await getTextEmbedder();
   const output = await embedder(texts, { pooling: "mean", normalize: true });
   return output.tolist() as number[][];
+}
+
+/**
+ * 文字列を正規化済み(長さ1)のベクトルへ変換する。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、モデルをそのマシンへ委譲する
+ * (Vercel等、モデルを実行できない環境向け)。未設定ならこのマシンでそのまま実行する。
+ */
+export async function embedTexts(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  const baseUrl = getInferenceBaseUrl();
+  if (baseUrl) {
+    return callInferenceServer<number[][]>("/api/internal/embed-text", { texts });
+  }
+  return embedTextsLocal(texts);
+}
+
+/**
+ * 画像を英語ラベル候補に対してゼロショット分類する(このマシンでモデルを実際に動かす)。
+ * `imageBase64`はJPEG/PNG等のバイナリをbase64文字列化したもの。
+ */
+export async function classifyImageLocal(
+  imageBase64: string,
+  labels: string[]
+): Promise<Array<{ label: string; score: number }>> {
+  const classifier = await getImageClassifier();
+  const imageBuffer = Buffer.from(imageBase64, "base64");
+  const image = await RawImage.fromBlob(new Blob([new Uint8Array(imageBuffer)]));
+  return (await classifier(image, labels)) as Array<{ label: string; score: number }>;
+}
+
+/**
+ * 画像を英語ラベル候補に対してゼロショット分類する。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、モデルをそのマシンへ委譲する
+ * (Vercel等、モデルを実行できない環境向け)。未設定ならこのマシンでそのまま実行する。
+ */
+export async function classifyImage(
+  imageBuffer: Buffer,
+  labels: string[]
+): Promise<Array<{ label: string; score: number }>> {
+  const baseUrl = getInferenceBaseUrl();
+  const imageBase64 = imageBuffer.toString("base64");
+  if (baseUrl) {
+    return callInferenceServer<Array<{ label: string; score: number }>>("/api/internal/classify-image", {
+      imageBase64,
+      labels,
+    });
+  }
+  return classifyImageLocal(imageBase64, labels);
 }
 
 /** 正規化済みベクトル同士のコサイン類似度(内積と同値) */

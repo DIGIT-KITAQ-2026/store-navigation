@@ -1,6 +1,5 @@
-import { RawImage } from "@huggingface/transformers";
 import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude";
-import { getImageClassifier } from "./clip/models";
+import { classifyImage } from "./clip/models";
 import { IMAGE_LABELS } from "./clip/imageLabels";
 import { searchProductsWithClip } from "./searchProductsWithClip";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -32,13 +31,10 @@ export async function searchProductsWithClipVision(
 ): Promise<ClaudeSearchMatch[]> {
   if (catalog.length === 0) return [];
 
-  const classifier = await getImageClassifier();
-  const image = await RawImage.fromBlob(new Blob([new Uint8Array(imageBuffer)]));
-
-  const predictions = (await classifier(
-    image,
+  const predictions = await classifyImage(
+    imageBuffer,
     IMAGE_LABELS.map((entry) => entry.label)
-  )) as Array<{ label: string; score: number }>;
+  );
 
   const topScore = predictions[0]?.score ?? 0;
   const acceptedLabels = predictions.filter(
