@@ -10,10 +10,18 @@ import type { SearchResultItem } from "@/types/product";
 import { fetchCategoryKeywordIndex } from "@/lib/category/fetchCategories";
 import { matchProductsByCategory } from "@/lib/category/categoryMatch";
 import { mergeSearchMatches } from "@/lib/category/mergeSearchMatches";
+import { isProductNameQuery } from "@/lib/category/isProductNameQuery";
+import { expandEmojiQuery } from "@/lib/aiSearch/emojiQueries";
+import { rankMatches } from "@/lib/aiSearch/rankMatches";
+import { expandIntentQuery } from "@/lib/aiSearch/intentQueries";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
-  const query = typeof body?.query === "string" ? body.query.trim() : "";
+  const rawQuery = typeof body?.query === "string" ? body.query.trim() : "";
+  // 絵文字で検索されたら日本語に置き換えてから探す(「😷」→「マスク」)。
+  // 続けて、意味検索が結び付けられない言い回しに商品の語を足す(「喉が渇いた」→ 緑茶)。
+  // 以降の層(カテゴリ検索・文字列一致・意味検索)はすべてこの変換後の語を見る
+  const query = expandIntentQuery(expandEmojiQuery(rawQuery));
 
   if (query.length === 0) {
     return Response.json({ results: [] satisfies SearchResultItem[] });
@@ -58,10 +66,17 @@ export async function POST(request: Request) {
     usedFallback = true;
   }
 
-  // カテゴリ一致商品を優先しつつ、既存検索(文字列一致→意味検索)内部の順序は変更しない
-  const mergedMatches = mergeSearchMatches(categoryMatches, matches);
+  // カテゴリ一致商品を優先しつつ、既存検索(文字列一致→意味検索)内部の順序は変更しない。
+  // ただし商品名そのもので検索された場合は、その商品だけを返す。カテゴリ検索は一致した
+  // カテゴリの商品を全件返すため、混ぜると「歯ブラシ」で衛生カテゴリの5商品が並んでしまう
+  const categoryNames = [...new Set(categoryKeywordIndex.map((entry) => entry.categoryName))];
+  const mergedMatches = isProductNameQuery(query, catalog, categoryNames)
+    ? matches
+    : mergeSearchMatches(categoryMatches, matches);
+  // 左上から読まれるので、商品名が当たっている商品を先頭に寄せる
+  const rankedMatches = rankMatches(query, mergedMatches, catalog);
   const results: SearchResultItem[] = mapMatchesToResults(
-    mergedMatches,
+    rankedMatches,
     catalog,
     locationCodeByProductId,
     stockInfoByProductId

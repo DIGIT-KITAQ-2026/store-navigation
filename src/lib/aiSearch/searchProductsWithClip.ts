@@ -1,5 +1,5 @@
 import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude";
-import { embedTexts } from "./clip/models";
+import { embedQuery, textModelFor } from "./clip/models";
 import { matchProductsByVector } from "./clip/matchProducts";
 import { fallbackSearch, normalizeSearchText, stripSearchPunctuation } from "./fallbackSearch";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -18,6 +18,36 @@ import { buildSearchReason } from "./searchReasons";
  * そこで、確実な手がかりである文字列一致を先に採り、そこから漏れる
  * 「カレーの材料」のような目的ベースの検索語を意味検索で拾う。
  */
+/**
+ * 検索語が「商品名そのもの」か、「目的・状況」かを見分ける。
+ *
+ * 商品名で検索したのに一致する商品が無いなら、その店に置いていないということなので
+ * 0件を返したい。意味検索に回すと無関係な商品が出てしまう
+ * (実測: 取り扱いのない「にんじん」で「綿棒」が出ていた)。
+ * 一方「喉が渇いた」のような目的の検索語は、一致しなくても意味検索で拾いたい。
+ *
+ * 形態素解析を入れずに済ませるため、助詞・語尾・長さで判定している。
+ * 「に」「と」「か」などは名詞にも頻出するため助詞の判定からは外している
+ * (入れると「にんじん」が目的の検索語と判定されてしまう)。
+ *
+ * **日本語専用の判定なので、日本語以外では使わないこと。** 助詞も語尾も日本語のものしか
+ * 見ていないため、短い外国語はすべて「商品名」と判定される。商品名は日本語なので
+ * 文字列一致も当たらず、「mask」「口罩」「마스크」がどれも0件になっていた。
+ */
+const INTENT_PARTICLES = /[をがはへで]|の[^り]/;
+const INTENT_WORDS = /(たい|ほしい|欲しい|ください|どこ|ある|ありま|する|して|です|ませ|ない|探)/;
+const INTENT_VERB_ENDING = /[たるいうくぐすつぬぶむえ]$/;
+const MAX_PRODUCT_NAME_LENGTH = 8;
+
+function looksLikeProductName(query: string): boolean {
+  if (query.length > MAX_PRODUCT_NAME_LENGTH) return false;
+  return !(
+    INTENT_PARTICLES.test(query) ||
+    INTENT_WORDS.test(query) ||
+    INTENT_VERB_ENDING.test(query)
+  );
+}
+
 export async function searchProductsWithClip(
   query: string,
   catalog: CatalogItem[],
@@ -51,11 +81,19 @@ export async function searchProductsWithClip(
   );
   if (hasNameMatch) return lexicalMatches;
 
+  // 商品名で検索されたのに1件も一致しないなら、その商品は置いていない。
+  // 意味検索に回すと無関係な商品が出てしまうのでここで打ち切る。
+  // 日本語以外は判定できない(looksLikeProductNameのコメント参照)ので打ち切らない
+  if (locale === "ja" && lexicalMatches.length === 0 && looksLikeProductName(trimmed)) return [];
+
   // 2) 意味検索(「カレーの材料」のような目的ベースの検索語を拾う)
-  const [queryVector] = await embedTexts([trimmed]);
+  // 埋め込みモデルは検索する言語で使い分ける(日本語はruri、それ以外はe5。clip/models.ts参照)
+  const textModel = textModelFor(locale);
+  const queryVector = await embedQuery(trimmed, textModel);
   const semanticMatches = await matchProductsByVector(
     queryVector,
     catalog,
+    textModel,
     (item) => buildSearchReason("semantic", { query: trimmed, name: item.name }, locale)
   );
 

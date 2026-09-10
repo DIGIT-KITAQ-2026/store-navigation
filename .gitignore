@@ -75,3 +75,6 @@ WebGLExport2/
 WebGLExport3/
 WebGLExport4/
 WebGLExportold/
+
+# 音声評価の生成物(scripts/voice-eval/make_fixtures.mjs で作り直せる)
+scripts/voice-eval/audio/
