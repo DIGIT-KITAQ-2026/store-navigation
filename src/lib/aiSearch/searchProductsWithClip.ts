@@ -39,8 +39,19 @@ const INTENT_WORDS = /(たい|ほしい|欲しい|ください|どこ|ある|あ
 const INTENT_VERB_ENDING = /[たるいうくぐすつぬぶむえ]$/;
 const MAX_PRODUCT_NAME_LENGTH = 8;
 
+/**
+ * 「〜物」「〜品」「〜用品」「〜類」で終わる語は、具体的な商品名ではなく
+ * 「食べ物」「飲み物」「文房具」「衛生用品」のような抽象的なカテゴリ・総称であることが多い。
+ * この総称は特定の助詞・意図語を含まないためINTENT_*では拾えず、商品名扱いされて
+ * 意味検索に回らないまま0件になっていた(実測: 「食べ物」「飲み物」が2026-09-10時点で0件)。
+ * 商品名に完全一致する場合(例: 既存商品「歯磨き用品」)はlexicalMatchesで先に当たるため、
+ * この判定に来る時点で「カタログに無い語」であり、総称寄りに倒しても実害は小さい。
+ */
+const GENERIC_CATEGORY_SUFFIX = /(物|用品|用具|食品|類|グッズ)$/;
+
 function looksLikeProductName(query: string): boolean {
   if (query.length > MAX_PRODUCT_NAME_LENGTH) return false;
+  if (GENERIC_CATEGORY_SUFFIX.test(query)) return false;
   return !(
     INTENT_PARTICLES.test(query) ||
     INTENT_WORDS.test(query) ||

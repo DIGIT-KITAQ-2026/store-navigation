@@ -36,12 +36,16 @@ let transcriberPromise: Promise<AutomaticSpeechRecognitionPipeline> | null = nul
  * `@huggingface/transformers`(と依存のonnxruntime-nodeネイティブバインディング)は
  * Vercel等のサーバーレス環境では読み込めない。プロキシ経由(`AI_INFERENCE_BASE_URL`設定時)では
  * このモジュールに一切触れないよう、staticインポートではなく実行時の動的importにする。
+ * 読み込みに失敗した場合はrejectしたPromiseをキャッシュに残さず、次回やり直せるようにする。
  */
 export function loadTranscriber(): Promise<AutomaticSpeechRecognitionPipeline> {
   if (!transcriberPromise) {
-    transcriberPromise = import("@huggingface/transformers").then(({ pipeline }) =>
-      pipeline("automatic-speech-recognition", MODEL_ID, { dtype: "q4" })
-    );
+    transcriberPromise = import("@huggingface/transformers")
+      .then(({ pipeline }) => pipeline("automatic-speech-recognition", MODEL_ID, { dtype: "q4" }))
+      .catch((error: unknown) => {
+        transcriberPromise = null;
+        throw error;
+      });
   }
   return transcriberPromise;
 }

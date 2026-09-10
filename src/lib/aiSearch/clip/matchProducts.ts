@@ -44,11 +44,19 @@ function catalogSignature(catalog: CatalogItem[]): string {
 /** 店外ラベルは固定なので、モデルごとに1度だけ埋め込む */
 const outOfStoreVectorPromises = new Map<string, Promise<number[][]>>();
 
+/**
+ * 埋め込みが失敗した場合(推論サーバーへの一時的な接続断など)にrejectしたPromiseを
+ * そのままキャッシュしてしまうと、プロセスを再起動するまで全ての意味検索が
+ * 永久に失敗し続けてしまう。失敗時はキャッシュから消し、次回また取得し直せるようにする。
+ */
 function getOutOfStoreVectors(model: TextModel): Promise<number[][]> {
   const loaded = outOfStoreVectorPromises.get(model.id);
   if (loaded) return loaded;
 
-  const loading = embedPassages([...OUT_OF_STORE_LABELS], model);
+  const loading = embedPassages([...OUT_OF_STORE_LABELS], model).catch((error: unknown) => {
+    outOfStoreVectorPromises.delete(model.id);
+    throw error;
+  });
   outOfStoreVectorPromises.set(model.id, loading);
   return loading;
 }

@@ -78,13 +78,21 @@ let imageEmbedderPromise: Promise<ImageEmbedder> | null = null;
 // `@huggingface/transformers`(と依存のonnxruntime-nodeネイティブバインディング)は
 // Vercel等のサーバーレス環境では読み込めない。プロキシ経由(`AI_INFERENCE_BASE_URL`設定時)では
 // このモジュールに一切触れないよう、staticインポートではなく実行時の動的importにする。
+//
+// いずれも、モデルの読み込みに失敗した場合(ダウンロード中のネットワーク断など)に
+// rejectしたPromiseをそのままキャッシュしてしまうと、プロセスを再起動するまで
+// 該当モデルを使う処理が永久に失敗し続けてしまう。失敗時はキャッシュから消し、
+// 次回のリクエストで読み込みをやり直せるようにする。
 export function getTextEmbedder(model: TextModel): Promise<TextEmbedder> {
   const loaded = textEmbedderPromises.get(model.id);
   if (loaded) return loaded;
 
-  const loading = import("@huggingface/transformers").then(({ pipeline }) =>
-    pipeline("feature-extraction", model.id, { dtype: "fp32" })
-  );
+  const loading = import("@huggingface/transformers")
+    .then(({ pipeline }) => pipeline("feature-extraction", model.id, { dtype: "fp32" }))
+    .catch((error: unknown) => {
+      textEmbedderPromises.delete(model.id);
+      throw error;
+    });
   textEmbedderPromises.set(model.id, loading);
   return loading;
 }
@@ -92,9 +100,12 @@ export function getTextEmbedder(model: TextModel): Promise<TextEmbedder> {
 /** develop側で置き換え済みの画像検索(searchProductsWithClipVision)からは現在呼ばれていないが、互換のため残す */
 export function getImageClassifier(): Promise<ImageClassifier> {
   if (!imageClassifierPromise) {
-    imageClassifierPromise = import("@huggingface/transformers").then(({ pipeline }) =>
-      pipeline("zero-shot-image-classification", VISION_MODEL, { dtype: "fp32" })
-    );
+    imageClassifierPromise = import("@huggingface/transformers")
+      .then(({ pipeline }) => pipeline("zero-shot-image-classification", VISION_MODEL, { dtype: "fp32" }))
+      .catch((error: unknown) => {
+        imageClassifierPromise = null;
+        throw error;
+      });
   }
   return imageClassifierPromise;
 }
@@ -105,9 +116,12 @@ export function getImageClassifier(): Promise<ImageClassifier> {
  */
 export function getImageEmbedder(): Promise<ImageEmbedder> {
   if (!imageEmbedderPromise) {
-    imageEmbedderPromise = import("@huggingface/transformers").then(({ pipeline }) =>
-      pipeline("image-feature-extraction", VISION_MODEL, { dtype: "fp32" })
-    );
+    imageEmbedderPromise = import("@huggingface/transformers")
+      .then(({ pipeline }) => pipeline("image-feature-extraction", VISION_MODEL, { dtype: "fp32" }))
+      .catch((error: unknown) => {
+        imageEmbedderPromise = null;
+        throw error;
+      });
   }
   return imageEmbedderPromise;
 }
