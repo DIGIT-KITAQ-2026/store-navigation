@@ -6,7 +6,11 @@ import SearchBar from "@/components/ui/SearchBar";
 import EmptyState from "@/components/ui/EmptyState";
 import SearchResults from "@/components/features/SearchResults";
 import { readCachedResults, writeCachedResults } from "@/lib/searchResultsCache";
-import { takePendingImageSearchFile } from "@/lib/pendingImageSearch";
+import {
+  claimPendingImageSearch,
+  clearPendingImageSearchFile,
+  peekPendingImageSearchFile,
+} from "@/lib/pendingImageSearch";
 import { useImageSearch } from "@/lib/useImageSearch";
 import { useTranslations } from "@/lib/i18n/useTranslations";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
@@ -46,14 +50,6 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  // React Strict Mode(開発時)はマウント時のエフェクトを2回実行する。以下2点への対処:
-  //  1. takePendingImageSearchFile()は取り出すとクリアされるため、2回目はnullになり
-  //     テキスト検索(検索語は"画像検索")に流れて画像検索の結果を上書きしてしまう。
-  //     → 取り出した値をrefに保持し、2回目も同じ値を見るようにする。
-  //  2. 画像検索はAPIを消費するため2回実行したくない。→ 実行済みフラグで1度きりにする。
-  //     (テキスト検索は1回目がクリーンアップでabortされるので、2回目に実行させる必要がある)
-  const pendingFileRef = useRef<File | null | undefined>(undefined);
-  const imageSearchStartedRef = useRef(false);
   const { error: imageSearchError, search: searchByImage } = useImageSearch();
 
   // fetch実行のみを行い、setStateは非同期コールバック内でのみ呼ぶ(エフェクト内からの直接呼び出しを許容するため)
@@ -123,17 +119,19 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   };
 
   useEffect(() => {
-    if (pendingFileRef.current === undefined) {
-      pendingFileRef.current = takePendingImageSearchFile();
-    }
-    const pendingFile = pendingFileRef.current;
+    const pendingFile = peekPendingImageSearchFile();
 
     if (pendingFile) {
-      // ホーム画面から画像検索として遷移してきた場合。この画面側で改めて検索を実行する
+      // ホーム画面から画像検索として遷移してきた場合。この画面側で改めて検索を実行する。
+      // 受け取った画像を画面の状態へ移すだけの初期化なので、連鎖的な再描画は起きない。
+      // URLの ?q=画像検索 は見出し用の目印なので入力欄には残さない
+      // (残すと添付画像の×を押したときに「画像検索」という文字が現れてしまう)
+      /* eslint-disable react-hooks/set-state-in-effect */
       setAttachedFile(pendingFile);
-      if (!imageSearchStartedRef.current) {
-        imageSearchStartedRef.current = true;
-        void executeImageSearch(pendingFile);
+      setQuery("");
+      /* eslint-enable react-hooks/set-state-in-effect */
+      if (claimPendingImageSearch(pendingFile)) {
+        void executeImageSearch(pendingFile).finally(clearPendingImageSearchFile);
       }
     } else if (initialQuery.trim().length > 0) {
       const cached = readCachedResults(initialQuery, locale);
@@ -154,13 +152,17 @@ export default function SearchScreen({ initialQuery }: SearchScreenProps) {
   }, []);
 
   // 言語切り替え時、表示中の検索結果(商品説明・一致理由など翻訳対象のフィールドを含む)を
-  // 新しいロケールで再取得する。マウント時の初回実行は上のeffectに任せるためスキップする
-  const isFirstLocaleRenderRef = useRef(true);
+  // 新しいロケールで再取得する。マウント時の取得は上のeffectに任せるため、ここでは
+  // 「前回と言語が変わったか」で判定する。
+  //
+  // 以前は「初回かどうか」のフラグで判定していたが、開発時のStrict Modeでこのeffectが
+  // 2回実行されると2回目が初回扱いでなくなり、言語が変わっていないのに走ってしまう。
+  // その結果、画像検索の直後にURLの ?q=画像検索 でテキスト検索が実行され、
+  // 画像検索の結果が「該当する商品が見つかりませんでした」で上書きされていた。
+  const lastLocaleRef = useRef(locale);
   useEffect(() => {
-    if (isFirstLocaleRenderRef.current) {
-      isFirstLocaleRenderRef.current = false;
-      return;
-    }
+    if (lastLocaleRef.current === locale) return;
+    lastLocaleRef.current = locale;
 
     abortControllerRef.current?.abort();
 
