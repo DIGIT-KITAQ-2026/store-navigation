@@ -2,6 +2,11 @@ import { AdminHeader } from "@/components/ui/AdminHeader";
 import { AdminProductListView } from "@/components/features/AdminProductListView";
 import { getAdminProductList } from "@/lib/supabase/server";
 
+// このページはServer Component内で直接DBを取得するため、Next.jsの静的最適化に任せると
+// ビルド時点のスナップショットが固定配信されてしまう(商品を追加・削除しても一覧に反映されない)。
+// 毎リクエストで最新のDB状態を取得するよう明示的に動的レンダリングにする。
+export const dynamic = "force-dynamic";
+
 export default async function AdminProductsPage() {
   const products = await getAdminProductList();
 
