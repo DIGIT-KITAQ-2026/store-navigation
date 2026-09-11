@@ -1,5 +1,6 @@
-import { pipeline } from "@huggingface/transformers";
+import type { pipeline } from "@huggingface/transformers";
 import type { Locale } from "@/lib/i18n/locales";
+import { getInferenceBaseUrl, callInferenceServer } from "@/lib/aiInference/inferenceProxy";
 
 /**
  * CLIP系モデルの読み込み。プロセス内で1度だけ読み込み、以降は使い回す。
@@ -74,18 +75,37 @@ const textEmbedderPromises = new Map<string, Promise<TextEmbedder>>();
 let imageClassifierPromise: Promise<ImageClassifier> | null = null;
 let imageEmbedderPromise: Promise<ImageEmbedder> | null = null;
 
+// `@huggingface/transformers`(と依存のonnxruntime-nodeネイティブバインディング)は
+// Vercel等のサーバーレス環境では読み込めない。プロキシ経由(`AI_INFERENCE_BASE_URL`設定時)では
+// このモジュールに一切触れないよう、staticインポートではなく実行時の動的importにする。
+//
+// いずれも、モデルの読み込みに失敗した場合(ダウンロード中のネットワーク断など)に
+// rejectしたPromiseをそのままキャッシュしてしまうと、プロセスを再起動するまで
+// 該当モデルを使う処理が永久に失敗し続けてしまう。失敗時はキャッシュから消し、
+// 次回のリクエストで読み込みをやり直せるようにする。
 export function getTextEmbedder(model: TextModel): Promise<TextEmbedder> {
   const loaded = textEmbedderPromises.get(model.id);
   if (loaded) return loaded;
 
-  const loading = pipeline("feature-extraction", model.id, { dtype: "fp32" });
+  const loading = import("@huggingface/transformers")
+    .then(({ pipeline }) => pipeline("feature-extraction", model.id, { dtype: "fp32" }))
+    .catch((error: unknown) => {
+      textEmbedderPromises.delete(model.id);
+      throw error;
+    });
   textEmbedderPromises.set(model.id, loading);
   return loading;
 }
 
+/** develop側で置き換え済みの画像検索(searchProductsWithClipVision)からは現在呼ばれていないが、互換のため残す */
 export function getImageClassifier(): Promise<ImageClassifier> {
   if (!imageClassifierPromise) {
-    imageClassifierPromise = pipeline("zero-shot-image-classification", VISION_MODEL, { dtype: "fp32" });
+    imageClassifierPromise = import("@huggingface/transformers")
+      .then(({ pipeline }) => pipeline("zero-shot-image-classification", VISION_MODEL, { dtype: "fp32" }))
+      .catch((error: unknown) => {
+        imageClassifierPromise = null;
+        throw error;
+      });
   }
   return imageClassifierPromise;
 }
@@ -96,17 +116,36 @@ export function getImageClassifier(): Promise<ImageClassifier> {
  */
 export function getImageEmbedder(): Promise<ImageEmbedder> {
   if (!imageEmbedderPromise) {
-    imageEmbedderPromise = pipeline("image-feature-extraction", VISION_MODEL, { dtype: "fp32" });
+    imageEmbedderPromise = import("@huggingface/transformers")
+      .then(({ pipeline }) => pipeline("image-feature-extraction", VISION_MODEL, { dtype: "fp32" }))
+      .catch((error: unknown) => {
+        imageEmbedderPromise = null;
+        throw error;
+      });
   }
   return imageEmbedderPromise;
 }
 
-/** 文字列を正規化済み(長さ1)のベクトルへ変換する */
-async function embedTexts(texts: string[], model: TextModel): Promise<number[][]> {
+/** 文字列を正規化済み(長さ1)のベクトルへ変換する(このマシンでモデルを実際に動かす) */
+export async function embedTextsLocal(texts: string[], model: TextModel): Promise<number[][]> {
   if (texts.length === 0) return [];
   const embedder = await getTextEmbedder(model);
   const output = await embedder(texts, { pooling: "mean", normalize: true });
   return output.tolist() as number[][];
+}
+
+/**
+ * 文字列を正規化済み(長さ1)のベクトルへ変換する。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、モデルをそのマシンへ委譲する
+ * (Vercel等、モデルを実行できない環境向け)。未設定ならこのマシンでそのまま実行する。
+ */
+async function embedTexts(texts: string[], model: TextModel): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  const baseUrl = getInferenceBaseUrl();
+  if (baseUrl) {
+    return callInferenceServer<number[][]>("/api/internal/embed-text", { texts, model });
+  }
+  return embedTextsLocal(texts, model);
 }
 
 /** 検索語をベクトルにする */

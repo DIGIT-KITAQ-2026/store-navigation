@@ -1,4 +1,5 @@
 import { runClaudeCli } from "./claudeCli";
+import { callInferenceServer, getInferenceBaseUrl } from "@/lib/aiInference/inferenceProxy";
 
 interface ClaudeCliResult {
   is_error: boolean;
@@ -27,10 +28,12 @@ function takeFirstSentence(text: string): string {
 }
 
 /**
- * 商品名から、検索用の商品説明を一文だけAIに生成させる。
+ * 商品名から、検索用の商品説明を一文だけAIに生成させる(このマシン上でclaude CLIを実行する実体)。
  * `searchProductsWithClaude`と同じくclaude CLIをサブプロセス実行する方式を使う。
+ * `/api/internal/generate-description`からも直接呼ばれる(プロキシ経由で無限ループしないよう、
+ * こちらは常にローカル実行のみを行う)。
  */
-export async function generateProductDescription(name: string): Promise<string> {
+export async function generateProductDescriptionLocal(name: string): Promise<string> {
   const prompt = buildPrompt(name);
 
   const { stdout } = await runClaudeCli(["-p", prompt, "--output-format", "json", "--tools", ""], {
@@ -44,4 +47,25 @@ export async function generateProductDescription(name: string): Promise<string> 
   }
 
   return takeFirstSentence(parsed.result);
+}
+
+/**
+ * 商品名から、検索用の商品説明を一文だけAIに生成させる。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、`claude` CLIを実行できる外部推論サーバーへ
+ * 転送する(Vercel上で動かす想定。Vercelには`claude`コマンド自体が存在しないため)。
+ * 未設定ならこのプロセス内でclaude CLIを実行する(今までのdevelopと完全に同じ挙動)。
+ *
+ * `runClaudeCli`自体(任意のCLI引数を受け取れる汎用関数)はプロキシの対象にしない。
+ * 外部に公開するエンドポイントは「商品名から説明文を1つ生成する」という狭い用途に
+ * 限定し、任意のclaude CLI引数を受け付けるエンドポイントは作らない(セキュリティ上の理由)。
+ */
+export async function generateProductDescription(name: string): Promise<string> {
+  const baseUrl = getInferenceBaseUrl();
+  if (baseUrl) {
+    const result = await callInferenceServer<{ description: string }>("/api/internal/generate-description", {
+      name,
+    });
+    return result.description;
+  }
+  return generateProductDescriptionLocal(name);
 }

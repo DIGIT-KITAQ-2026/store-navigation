@@ -1,4 +1,5 @@
-import { pipeline, type AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
+import type { AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
+import { callInferenceServer, getInferenceBaseUrl } from "@/lib/aiInference/inferenceProxy";
 
 /**
  * 音声認識モデル。whisper-large-v3-turboを日本語45000時間で追加学習したものを使う。
@@ -30,21 +31,51 @@ const MODEL_ID = "willopcbeta/whisper-ja-760M-ONNX";
 
 let transcriberPromise: Promise<AutomaticSpeechRecognitionPipeline> | null = null;
 
-/** モデルの読み込みは初回のみ1分ほどかかるため、プロセス内で使い回す */
+/**
+ * モデルの読み込みは初回のみ1分ほどかかるため、プロセス内で使い回す。
+ * `@huggingface/transformers`(と依存のonnxruntime-nodeネイティブバインディング)は
+ * Vercel等のサーバーレス環境では読み込めない。プロキシ経由(`AI_INFERENCE_BASE_URL`設定時)では
+ * このモジュールに一切触れないよう、staticインポートではなく実行時の動的importにする。
+ * 読み込みに失敗した場合はrejectしたPromiseをキャッシュに残さず、次回やり直せるようにする。
+ */
 export function loadTranscriber(): Promise<AutomaticSpeechRecognitionPipeline> {
   if (!transcriberPromise) {
-    transcriberPromise = pipeline("automatic-speech-recognition", MODEL_ID, { dtype: "q4" });
+    transcriberPromise = import("@huggingface/transformers")
+      .then(({ pipeline }) => pipeline("automatic-speech-recognition", MODEL_ID, { dtype: "q4" }))
+      .catch((error: unknown) => {
+        transcriberPromise = null;
+        throw error;
+      });
   }
   return transcriberPromise;
 }
 
 /**
- * 16kHz・モノラルのPCMを日本語として文字起こしする。
+ * 16kHz・モノラルのPCMを日本語として文字起こしする(このマシン上でモデルを実行する実体)。
  * `language`を固定しないと英語として書き起こされたり翻訳されたりするため必ず指定する。
+ * `/api/internal/transcribe`からも直接呼ばれる(プロキシ経由で無限ループしないよう、
+ * こちらは常にローカル実行のみを行う)。
  */
-export async function transcribeJapanese(audio: Float32Array): Promise<string> {
+export async function transcribeJapaneseLocal(audio: Float32Array): Promise<string> {
   const transcriber = await loadTranscriber();
   const output = await transcriber(audio, { language: "japanese", task: "transcribe" });
   const result = Array.isArray(output) ? output[0] : output;
   return typeof result?.text === "string" ? result.text.trim() : "";
+}
+
+/**
+ * 16kHz・モノラルのPCMを日本語として文字起こしする。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、Whisperモデルを持つ外部推論サーバーへ
+ * 転送する(Vercel上で動かす想定)。未設定ならこのプロセス内でモデルを実行する
+ * (今までのdevelopと完全に同じ挙動)。
+ */
+export async function transcribeJapanese(audio: Float32Array): Promise<string> {
+  const baseUrl = getInferenceBaseUrl();
+  if (baseUrl) {
+    const result = await callInferenceServer<{ text: string }>("/api/internal/transcribe", {
+      audio: Array.from(audio),
+    });
+    return result.text;
+  }
+  return transcribeJapaneseLocal(audio);
 }

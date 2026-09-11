@@ -1,6 +1,7 @@
 import { getImageEmbedder } from "./models";
 import { OIV7_CLASS_QUERIES } from "./oiv7ClassQueries";
 import weights from "./model/oiv7ProductClassifier.json";
+import { getInferenceBaseUrl, callInferenceServer } from "@/lib/aiInference/inferenceProxy";
 
 /**
  * Open Images V7 の画像で学習した、商品カテゴリの分類器。
@@ -48,10 +49,13 @@ function softmax(values: number[]): number[] {
   return exponentials.map((value) => value / total);
 }
 
-/** 画像を分類し、確率の高い順に返す */
-export async function classifyProductImage(imageInput: Parameters<Awaited<ReturnType<typeof getImageEmbedder>>>[0]): Promise<ClassPrediction[]> {
+/** 画像を分類し、確率の高い順に返す(このマシンでモデルを実際に動かす) */
+export async function classifyProductImageLocal(imageBuffer: Buffer): Promise<ClassPrediction[]> {
+  const { RawImage } = await import("@huggingface/transformers");
+  const image = await RawImage.fromBlob(new Blob([new Uint8Array(imageBuffer)]));
+
   const embedder = await getImageEmbedder();
-  const output = await embedder(imageInput);
+  const output = await embedder(image);
   const vector = normalize(Array.from(output.data as Float32Array));
 
   const { classes, dim, weights: w, bias } = model;
@@ -70,4 +74,19 @@ export async function classifyProductImage(imageInput: Parameters<Awaited<Return
       score: probabilities[index],
     }))
     .sort((a, b) => b.score - a.score);
+}
+
+/**
+ * 画像を分類し、確率の高い順に返す。
+ * `AI_INFERENCE_BASE_URL`が設定されていれば、モデルをそのマシンへ委譲する
+ * (Vercel等、モデルを実行できない環境向け)。未設定ならこのマシンでそのまま実行する。
+ */
+export async function classifyProductImage(imageBuffer: Buffer): Promise<ClassPrediction[]> {
+  const baseUrl = getInferenceBaseUrl();
+  if (baseUrl) {
+    return callInferenceServer<ClassPrediction[]>("/api/internal/classify-image", {
+      imageBase64: imageBuffer.toString("base64"),
+    });
+  }
+  return classifyProductImageLocal(imageBuffer);
 }
