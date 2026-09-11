@@ -1,4 +1,4 @@
-import { getImageEmbedder } from "./models";
+import { embedImage } from "./models";
 import { OIV7_CLASS_QUERIES } from "./oiv7ClassQueries";
 import weights from "./model/oiv7ProductClassifier.json";
 
@@ -48,11 +48,13 @@ function softmax(values: number[]): number[] {
   return exponentials.map((value) => value / total);
 }
 
-/** 画像を分類し、確率の高い順に返す */
-export async function classifyProductImage(imageInput: Parameters<Awaited<ReturnType<typeof getImageEmbedder>>>[0]): Promise<ClassPrediction[]> {
-  const embedder = await getImageEmbedder();
-  const output = await embedder(imageInput);
-  const vector = normalize(Array.from(output.data as Float32Array));
+/**
+ * 画像を分類し、確率の高い順に返す。
+ * 画像をベクトルにする部分はmodels.tsのembedImageに任せてあるので、
+ * AI_INFERENCE_BASE_URL設定時はその処理だけが外部の推論サーバーへ委譲される。
+ */
+export async function classifyProductImage(imageBuffer: Buffer): Promise<ClassPrediction[]> {
+  const vector = normalize(await embedImage(imageBuffer));
 
   const { classes, dim, weights: w, bias } = model;
   const logits = classes.map((_, k) => {

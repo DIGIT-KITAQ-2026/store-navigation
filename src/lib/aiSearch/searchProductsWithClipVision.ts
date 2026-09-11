@@ -1,4 +1,3 @@
-import { RawImage } from "@huggingface/transformers";
 import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude";
 import { classifyProductImage } from "./clip/productClassifier";
 import { NOT_A_PRODUCT_CLASS } from "./clip/oiv7ClassQueries";
@@ -49,8 +48,7 @@ export async function searchProductsWithClipVision(
 ): Promise<ClaudeSearchMatch[]> {
   if (catalog.length === 0) return [];
 
-  const image = await RawImage.fromBlob(new Blob([new Uint8Array(imageBuffer)]));
-  const predictions = await classifyProductImage(image);
+  const predictions = await classifyProductImage(imageBuffer);
 
   const top = predictions[0];
   if (!top || top.score < MIN_SCORE) return [];

@@ -1,4 +1,5 @@
 import SearchScreen from "@/components/features/SearchScreen";
+import StoreFlowGuard from "@/components/features/StoreFlowGuard";
 
 export default async function SearchPage({
   searchParams,
@@ -7,5 +8,9 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
 
-  return <SearchScreen initialQuery={q ?? ""} />;
+  return (
+    <StoreFlowGuard>
+      <SearchScreen initialQuery={q ?? ""} />
+    </StoreFlowGuard>
+  );
 }
