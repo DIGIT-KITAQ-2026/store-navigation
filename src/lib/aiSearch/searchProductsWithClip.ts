@@ -1,5 +1,5 @@
 import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude";
-import { embedQuery, textModelFor } from "./clip/models";
+import { embedQuery, textModelForQuery } from "./clip/models";
 import { matchProductsByVector } from "./clip/matchProducts";
 import { fallbackSearch, normalizeSearchText, stripSearchPunctuation } from "./fallbackSearch";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -87,8 +87,8 @@ export async function searchProductsWithClip(
   if (locale === "ja" && lexicalMatches.length === 0 && looksLikeProductName(trimmed)) return [];
 
   // 2) 意味検索(「カレーの材料」のような目的ベースの検索語を拾う)
-  // 埋め込みモデルは検索する言語で使い分ける(日本語はruri、それ以外はe5。clip/models.ts参照)
-  const textModel = textModelFor(locale);
+  // 埋め込みモデルは検索語の文字種で使い分ける(かなが有れば日本語モデル。clip/models.ts参照)
+  const textModel = textModelForQuery(trimmed, locale);
   const queryVector = await embedQuery(trimmed, textModel);
   const semanticMatches = await matchProductsByVector(
     queryVector,

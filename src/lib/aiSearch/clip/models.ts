@@ -68,6 +68,27 @@ export function textModelFor(locale: Locale): TextModel {
   return locale === "ja" ? JAPANESE_TEXT_MODEL : MULTILINGUAL_TEXT_MODEL;
 }
 
+/** ひらがな・カタカナ。これが含まれていれば日本語だと判断できる */
+const KANA = /[\u3041-\u309f\u30a1-\u30ff]/;
+/** ハングル。中国語と韓国語は多言語モデルの方が強い */
+const HANGUL = /[\uac00-\ud7af]/;
+
+/**
+ * 検索語に使うモデルを決める。**表示言語ではなく検索語そのものを見る。**
+ *
+ * 表示言語で決めていたが、英語表示のまま日本語で検索されると多言語モデルが使われ、
+ * 「喉が渇いた」で緑茶が出なかった(実測: 日本語モデルなら1位、多言語モデルでは19位)。
+ * 日本の店舗なので、表示言語が何であれ日本語で入力されることは普通にある。
+ *
+ * かなが含まれていれば日本語で確定。ハングルなら多言語モデル。
+ * 漢字だけの場合は日本語か中国語か判別できないため、表示言語で決める。
+ */
+export function textModelForQuery(query: string, locale: Locale): TextModel {
+  if (KANA.test(query)) return JAPANESE_TEXT_MODEL;
+  if (HANGUL.test(query)) return MULTILINGUAL_TEXT_MODEL;
+  return textModelFor(locale);
+}
+
 /** 内部APIが受け取った識別子からモデルを引く。知らない識別子はnull(モデルを読み込ませない) */
 export function textModelByKey(key: string): TextModel | null {
   if (key === JAPANESE_TEXT_MODEL.key) return JAPANESE_TEXT_MODEL;
