@@ -78,3 +78,6 @@ WebGLExportold/
 
 # 音声評価の生成物(scripts/voice-eval/make_fixtures.mjs で作り直せる)
 scripts/voice-eval/audio/
+
+# デモ起動スクリプトのログ
+scripts/.demo-logs/
