@@ -18,9 +18,23 @@ test("expandIntentQuery: 当てはまらない検索語はそのまま返す", (
   assert.equal(expandIntentQuery(""), "");
 });
 
-test("expandIntentQuery: 意味検索が届く言い回しは表に持たない", () => {
-  // ruriが「喉が渇いた」で緑茶を1位にできるため、飲み物の対応付けは不要になった
-  assert.equal(expandIntentQuery("喉が渇いた"), "喉が渇いた");
+test("expandIntentQuery: 喉の渇きは漢字の違いを問わず緑茶を足す", () => {
+  // かな漢字変換は「かわいた」を「乾いた」にすることが多く、こちらは意味検索が届かない
+  for (const query of ["喉が渇いた", "喉が乾いた", "のどがかわいた", "ノドが乾いた"]) {
+    assert.match(expandIntentQuery(query), /緑茶/, query);
+  }
+});
+
+test("expandIntentQuery: 飲み物を指す言い回しにも緑茶を足す", () => {
+  for (const query of ["水が飲みたい", "飲み物はどこ", "ドリンク", "水分補給したい"]) {
+    assert.match(expandIntentQuery(query), /緑茶/, query);
+  }
+});
+
+test("expandIntentQuery: 温かい飲み物にはスープも足す", () => {
+  const expanded = expandIntentQuery("温かいものが飲みたい");
+  assert.match(expanded, /緑茶/);
+  assert.match(expanded, /インスタントスープ/);
 });
 
 test("expandIntentQuery: 同じ語を二重に足さない", () => {

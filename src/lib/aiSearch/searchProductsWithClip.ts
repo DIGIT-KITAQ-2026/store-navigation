@@ -2,6 +2,7 @@ import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude"
 import { embedQuery, textModelForQuery } from "./clip/models";
 import { matchProductsByVector } from "./clip/matchProducts";
 import { fallbackSearch, normalizeSearchText, stripSearchPunctuation } from "./fallbackSearch";
+import { matchesAlias } from "./productAliases";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { buildSearchReason } from "./searchReasons";
 
@@ -77,7 +78,10 @@ export async function searchProductsWithClip(
   const hasNameMatch = catalog.some(
     (item) =>
       lexicalIds.has(item.id) &&
-      words.some((word) => normalizeSearchText(item.name).includes(normalizeSearchText(word)))
+      words.some((word) => {
+        const normalizedWord = normalizeSearchText(word);
+        return normalizeSearchText(item.name).includes(normalizedWord) || matchesAlias(item.name, normalizedWord);
+      })
   );
   if (hasNameMatch) return lexicalMatches;
 
