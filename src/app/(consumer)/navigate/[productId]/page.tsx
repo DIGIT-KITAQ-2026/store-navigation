@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import NavigateScreen from "@/components/features/NavigateScreen";
+import StoreFlowGuard from "@/components/features/StoreFlowGuard";
 import { getProductWithShelfLocation } from "@/lib/supabase/server";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isLocale } from "@/lib/i18n/locales";
 
@@ -18,5 +19,9 @@ export default async function NavigatePage({
 
   if (!product) notFound();
 
-  return <NavigateScreen product={product} />;
+  return (
+    <StoreFlowGuard>
+      <NavigateScreen product={product} />
+    </StoreFlowGuard>
+  );
 }
