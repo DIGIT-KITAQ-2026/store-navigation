@@ -1,6 +1,7 @@
 import type { CatalogItem, ClaudeSearchMatch } from "./searchProductsWithClaude";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { buildSearchReason } from "./searchReasons";
+import { matchesAlias } from "./productAliases";
 
 /**
  * 句読点を落として空白を整える。
@@ -52,7 +53,8 @@ export function fallbackSearch(
     const category = normalizeSearchText(item.category ?? "");
     const description = normalizeSearchText(item.description ?? "");
 
-    if (name.includes(normalizedQuery)) {
+    // 別名(ひらがな表記・通称)での一致も、商品名に一致したのと同じ扱いにする
+    if (name.includes(normalizedQuery) || matchesAlias(item.name, normalizedQuery)) {
       matches.push({
         productId: item.id,
         reason: buildSearchReason("nameMatch", { name: item.name }, locale),
