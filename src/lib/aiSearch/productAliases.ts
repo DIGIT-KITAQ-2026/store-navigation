@@ -77,9 +77,15 @@ const normalizedAliases = new Map<string, string[]>(
   ])
 );
 
-/** その商品が、検索語で指されているか(商品名そのものに一致したのと同じ扱いにしてよいか) */
-export function matchesAlias(productName: string, normalizedQuery: string): boolean {
+/**
+ * その商品が、検索語で指されているか(商品名そのものに一致したのと同じ扱いにしてよいか)。
+ *
+ * 検索語はここで正規化する。呼び出し側が正規化済みの値を渡しても結果は変わらない
+ * (正規化は2回かけても同じ)。正規化前の値を渡されて静かに外れるのを防ぐため。
+ */
+export function matchesAlias(productName: string, query: string): boolean {
   const aliases = normalizedAliases.get(normalizeSearchText(productName));
+  const normalizedQuery = normalizeSearchText(query);
   if (!aliases || normalizedQuery.length === 0) return false;
 
   return aliases.some(
