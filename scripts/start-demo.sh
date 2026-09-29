@@ -7,12 +7,21 @@
 # ログは scripts/.demo-logs/ に出る。止めるときは ./scripts/stop-demo.sh
 cd "$(dirname "$0")/.." || exit 1
 
+# launchd経由では通常のシェル設定が読み込まれないため、Homebrew版npm/ngrokを明示する。
+PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+
 NGROK_DOMAIN="tinwork-proxy-upheaval.ngrok-free.dev"
 LOG_DIR="scripts/.demo-logs"
 mkdir -p "$LOG_DIR"
 
+is_http_ok() {
+  local code
+  code=$(curl -sS -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 15 "$1" 2>/dev/null) || return 1
+  [ "$code" = "200" ]
+}
+
 # ── アプリ本体 ───────────────────────────────────────────────
-if curl -s -o /dev/null --max-time 3 http://127.0.0.1:3000/ 2>/dev/null; then
+if is_http_ok "http://127.0.0.1:3000/"; then
   echo "  ✓ アプリは起動済み"
 else
   echo "  … アプリを起動します"
@@ -25,14 +34,14 @@ else
     curl -s -o /dev/null --max-time 2 http://127.0.0.1:3000/ 2>/dev/null && break
     sleep 2
   done
-  curl -s -o /dev/null --max-time 3 http://127.0.0.1:3000/ 2>/dev/null \
+  is_http_ok "http://127.0.0.1:3000/" \
     && echo "  ✓ アプリを起動しました" \
     || { echo "  ✗ アプリの起動に失敗 → $LOG_DIR/app.log を確認"; exit 1; }
 fi
 
 # ── トンネル ─────────────────────────────────────────────────
 # ngrokの無料プランは同じドメインで1つしか起動できないため、生きているなら触らない
-if curl -s -o /dev/null --max-time 15 "https://$NGROK_DOMAIN/" 2>/dev/null; then
+if is_http_ok "https://$NGROK_DOMAIN/"; then
   echo "  ✓ トンネルは接続済み"
 else
   echo "  … トンネルを張り直します"
@@ -43,7 +52,7 @@ else
     curl -s -o /dev/null --max-time 5 "https://$NGROK_DOMAIN/" 2>/dev/null && break
     sleep 2
   done
-  curl -s -o /dev/null --max-time 15 "https://$NGROK_DOMAIN/" 2>/dev/null \
+  is_http_ok "https://$NGROK_DOMAIN/" \
     && echo "  ✓ トンネルを張り直しました" \
     || { echo "  ✗ トンネルの接続に失敗 → $LOG_DIR/ngrok.log を確認"; exit 1; }
 fi
